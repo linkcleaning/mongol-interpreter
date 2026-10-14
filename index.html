@@ -1225,7 +1225,12 @@ const TTS_PROVIDERS = {
       body: JSON.stringify({ text, lang, voice: cfg.azureVoice })
     });
     if (res.status === 401) throw new Error(t('e_badcode'));
-    if (!res.ok) throw new Error('server ' + res.status);
+    if (!res.ok){
+      // 서버가 알려준 Azure 상태 코드로 원인 표시 (401/403 = 키·지역 불일치)
+      let az = 0;
+      try { az = (await res.json()).status || 0; } catch {}
+      throw new Error(az === 401 || az === 403 ? `Azure ${az} — ${t('e_azauth')}` : `server ${res.status}${az ? ' / Azure ' + az : ''}`);
+    }
     await playAudioBuffer(await res.arrayBuffer());
   }
 };
