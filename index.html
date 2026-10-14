@@ -184,6 +184,16 @@
   dialog input,dialog select{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:14px;padding:11px 14px;font:16px var(--f)}
   dialog .hint{font-size:12px;color:var(--muted);margin:0}
   dialog p.msgtxt{margin:0;color:var(--ink-2)}
+  dialog details.admin{border-top:1px dashed var(--line);padding-top:12px;margin-top:6px;display:flex;flex-direction:column;gap:12px}
+  dialog details.admin[open]{display:flex}
+  dialog details.admin summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);list-style:none}
+  dialog details.admin summary::-webkit-details-marker{display:none}
+  dialog details.admin summary::after{content:" ›"}
+  dialog details.admin[open] summary{margin-bottom:12px}
+  dialog details.admin label + label,dialog details.admin p + label,dialog details.admin label + p{margin-top:12px}
+  dialog h2 small{display:block;font-size:13px;font-weight:400;color:var(--muted);margin-top:6px}
+  dialog .err-line{margin:0;font-size:13px;color:var(--mn)}
+  dialog .err-line:empty{display:none}
   dialog .btns{display:flex;gap:8px;margin-top:8px}
   dialog .btns button{flex:1;border:0;background:transparent;border-radius:14px;padding:12px;font-weight:600;color:var(--ko)}
   dialog .btns button:active{background:var(--soft)}
@@ -345,54 +355,64 @@
 <dialog id="settings">
   <form method="dialog" id="settingsForm">
     <h2>설정</h2>
-    <h3>번역 · Claude API</h3>
-    <label>Anthropic API 키
-      <input id="f-apiKey" name="apiKey" type="password" autocomplete="off" placeholder="sk-ant-...">
+    <h3>사용 코드</h3>
+    <label>사용 코드
+      <input id="f-accessCode" name="accessCode" autocomplete="off" autocapitalize="off" placeholder="관리자에게 받은 코드">
     </label>
-    <p class="hint">테스트용으로 이 기기에만 저장돼요. 다른 사람에게 배포할 땐 프록시 URL을 쓰고 키는 비워두세요.</p>
-    <label>프록시 URL (선택)
-      <input id="f-proxyUrl" name="proxyUrl" type="url" placeholder="https://your-worker.workers.dev/translate">
-    </label>
-    <label>모델
-      <select id="f-model" name="model">
-        <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (품질 우선)</option>
-        <option value="claude-haiku-5-5">Claude Haiku 5.5 (속도 우선)</option>
-      </select>
-    </label>
-    <h3>음성 인식</h3>
+    <p class="hint">코드만 넣으면 번역·몽골어 음성·음성 인식이 모두 동작해요.</p>
+    <h3>음성</h3>
     <label>말 알아듣기
       <select id="f-sttProvider" name="sttProvider">
         <option value="device">기기 내장 (안드로이드 Chrome 권장)</option>
-        <option value="azure">Azure Speech (아이폰 권장 · Azure 키 필요)</option>
+        <option value="azure">Azure Speech (아이폰 권장)</option>
       </select>
     </label>
-    <p class="hint">아이폰은 몽골어 받아쓰기가 없어서 Azure를 고르세요. 아래 칸에 넣은 Azure 키와 리전을 같이 써요.</p>
-    <h3>몽골어 음성 출력 · Azure 키</h3>
-    <label>TTS 엔진
-      <select id="f-ttsProvider" name="ttsProvider">
-        <option value="browser">기기 내장 (몽골어 음성 없는 기기 많음)</option>
-        <option value="azure">Azure Speech (mn-MN 뉴럴 음성)</option>
-        <option value="proxy">내 서버 / 프록시</option>
-      </select>
-    </label>
-    <label>Azure 키
-      <input id="f-azureKey" name="azureKey" type="password" autocomplete="off">
-    </label>
-    <label>Azure 리전
-      <input id="f-azureRegion" name="azureRegion" placeholder="koreacentral">
-    </label>
-    <label>몽골어 음성
+    <label>몽골어 목소리
       <select id="f-azureVoice" name="azureVoice">
         <option value="mn-MN-YesuiNeural">Yesui (여성)</option>
         <option value="mn-MN-BataaNeural">Bataa (남성)</option>
       </select>
     </label>
-    <label>TTS 프록시 URL
-      <input id="f-ttsUrl" name="ttsUrl" type="url" placeholder="https://your-worker.workers.dev/tts">
+    <label>번역 품질
+      <select id="f-model" name="model">
+        <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (품질 우선)</option>
+        <option value="claude-haiku-5-5">Claude Haiku 5.5 (속도 우선)</option>
+      </select>
     </label>
+    <details class="admin">
+      <summary>관리자 설정</summary>
+      <label>서버 주소
+        <input id="f-serverUrl" name="serverUrl" type="url" placeholder="https://hanmong.○○○.workers.dev">
+      </label>
+      <p class="hint">사용 코드 대신 키를 직접 넣으면 서버 없이 이 기기에서만 동작해요 (키는 이 기기에만 저장).</p>
+      <label>Anthropic API 키
+        <input id="f-apiKey" name="apiKey" type="password" autocomplete="off" placeholder="sk-ant-...">
+      </label>
+      <label>Azure 키
+        <input id="f-azureKey" name="azureKey" type="password" autocomplete="off">
+      </label>
+      <label>Azure 리전
+        <input id="f-azureRegion" name="azureRegion" placeholder="koreacentral">
+      </label>
+    </details>
     <div class="btns">
       <button value="cancel" formnovalidate>취소</button>
       <button value="save">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 처음 실행: 사용 코드 입력 -->
+<dialog id="welcome">
+  <form id="welcomeForm">
+    <h2>한몽 통역 시작하기<small>관리자에게 받은 사용 코드를 입력하세요.</small></h2>
+    <label>사용 코드
+      <input id="w-code" autocomplete="off" autocapitalize="off" required>
+    </label>
+    <p class="err-line" id="w-err"></p>
+    <div class="btns">
+      <button type="button" id="w-later">나중에</button>
+      <button type="submit" id="w-ok">시작</button>
     </div>
   </form>
 </dialog>
@@ -417,19 +437,34 @@
 const CFG_KEY = 'hm-interp-cfg';
 const HIST_KEY = 'hm-interp-history';
 const UI_KEY = 'hm-interp-ui';
+/*
+  ★ 중계 서버(Cloudflare Worker) 주소 — 배포 후 여기에 넣으면
+    다른 사람은 "사용 코드"만 입력하면 됩니다. (키는 서버에만 보관)
+*/
+const DEFAULT_SERVER = '';
+
 const DEFAULTS = {
-  apiKey: '',
-  proxyUrl: '',
+  accessCode: '',             // 서버 사용 코드
+  serverUrl: '',              // 비우면 DEFAULT_SERVER 사용
+  apiKey: '',                 // (관리자) 서버 없이 직접 쓸 때
+  azureKey: '',
+  azureRegion: 'koreacentral',
   model: 'claude-sonnet-5-5',
   autoSpeak: true,            // 번역 결과 읽어주기
   autoMic: false,             // 번역 후 상대 마이크 자동 켜기
   sttProvider: 'device',      // 'device' | 'azure' — 음성 인식 엔진
-  ttsProvider: 'browser',     // 'browser' | 'azure' | 'proxy'
-  azureKey: '',
-  azureRegion: 'koreacentral',
-  azureVoice: 'mn-MN-YesuiNeural',
-  ttsUrl: ''
+  azureVoice: 'mn-MN-YesuiNeural'
 };
+const serverBase = () => (cfg.serverUrl || DEFAULT_SERVER).trim().replace(/\/+$/, '');
+const useServer = () => !!(serverBase() && cfg.accessCode);
+const hasAzure = () => useServer() || !!cfg.azureKey;
+const isReady = () => useServer() || !!cfg.apiKey;
+function serverFetch(path, opts = {}){
+  return fetch(serverBase() + path, {
+    ...opts,
+    headers: { ...(opts.headers || {}), 'x-access-code': cfg.accessCode }
+  });
+}
 const LANGS = {
   ko: { stt: 'ko-KR', tts: 'ko-KR', name: '한국어', other: 'mn' },
   mn: { stt: 'mn-MN', tts: 'mn-MN', name: '몽골어', other: 'ko' }
@@ -634,22 +669,32 @@ async function translate(text, from, mode){
     .map(h => `[${h.from.toUpperCase()}] ${h.src}  =>  ${h.dst}`)
     .join('\n');
   const content = (ctx ? `<context>\n${ctx}\n</context>\n\n` : '') + `<utterance>${text}</utterance>`;
+
+  // 1) 중계 서버 — 키는 서버에만 있음. 프롬프트도 서버에서 만들어 다른 용도로 못 쓰게 함
+  if (useServer()){
+    const res = await serverFetch('/translate', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ from, text, context: ctx, model: cfg.model })
+    });
+    if (res.status === 401) throw new Error('사용 코드가 맞지 않아요. 설정에서 확인하세요');
+    if (!res.ok) throw new Error(`번역 실패: ${res.status}`);
+    const data = await res.json();
+    return (data.text || '').trim();
+  }
+
+  // 2) (관리자) 이 기기에 넣은 키로 직접 호출
+  if (!cfg.apiKey) throw new Error('메뉴 ☰ → 설정에서 사용 코드를 입력하세요');
   const body = { model: cfg.model, max_tokens: 1024, system: SYSTEM_PROMPTS[from], messages: [{ role: 'user', content }] };
-
-  const useProxy = !!cfg.proxyUrl;
-  if (!useProxy && !cfg.apiKey) throw new Error('메뉴 ☰ → 설정에서 API 키를 입력하세요');
-
-  const res = await fetch(useProxy ? cfg.proxyUrl : 'https://api.anthropic.com/v1/messages', {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: useProxy
-      ? { 'content-type': 'application/json' }
-      : {
-          'content-type': 'application/json',
-          'x-api-key': cfg.apiKey,
-          'anthropic-version': '2023-06-01',
-          // 브라우저에서 직접 호출할 때 필요한 헤더 (테스트 전용)
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': cfg.apiKey,
+      'anthropic-version': '2023-06-01',
+      // 브라우저에서 직접 호출할 때 필요한 헤더
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
     body: JSON.stringify(body)
   });
   if (!res.ok){
@@ -691,6 +736,18 @@ let rec = null, recLang = null;
 */
 const SDK_URL = 'https://cdn.jsdelivr.net/npm/microsoft-cognitiveservices-speech-sdk@1.45.0/distrib/browser/microsoft.cognitiveservices.speech.sdk.bundle-min.js';
 let sdkPromise = null;
+let sttToken = null;   // { token, region, exp }
+async function getSttToken(){
+  if (sttToken && sttToken.exp > Date.now()) return sttToken;
+  let res;
+  try { res = await serverFetch('/stt-token', { method: 'POST' }); }
+  catch { throw Object.assign(new Error('net'), { code: 'network' }); }
+  if (res.status === 401) throw Object.assign(new Error('code'), { code: 'bad-code' });
+  if (!res.ok) throw Object.assign(new Error('token'), { code: 'azure-auth' });
+  const j = await res.json();
+  sttToken = { token: j.token, region: j.region, exp: Date.now() + 8 * 60000 };   // 토큰 유효 10분 → 8분 뒤 갱신
+  return sttToken;
+}
 function loadAzureSDK(){
   if (window.SpeechSDK) return Promise.resolve(window.SpeechSDK);
   sdkPromise ??= new Promise((resolve, reject) => {
@@ -715,14 +772,17 @@ class AzureSR {
     this._done = false;
   }
   start(){
-    loadAzureSDK()
-      .then(sdk => this._run(sdk))
-      .catch(() => { this._err('azure-sdk'); this._finish(); });
+    Promise.all([loadAzureSDK(), useServer() ? getSttToken() : null])
+      .then(([sdk, tok]) => this._run(sdk, tok))
+      .catch(err => { this._err(err?.code || 'azure-sdk'); this._finish(); });
   }
-  _run(sdk){
+  _run(sdk, tok){
     if (this._done) return;
     try {
-      const sc = sdk.SpeechConfig.fromSubscription(cfg.azureKey, cfg.azureRegion || 'koreacentral');
+      // 서버 모드: 서버가 발급한 10분짜리 토큰 사용 (키는 폰에 오지 않음)
+      const sc = tok
+        ? sdk.SpeechConfig.fromAuthorizationToken(tok.token, tok.region)
+        : sdk.SpeechConfig.fromSubscription(cfg.azureKey, cfg.azureRegion || 'koreacentral');
       sc.speechRecognitionLanguage = this.lang;
       const r = this._r = new sdk.SpeechRecognizer(sc, sdk.AudioConfig.fromDefaultMicrophoneInput());
       r.recognizing = (s, e) => { clearTimeout(this._idle); this._emit(e.result.text, false); };
@@ -785,9 +845,9 @@ class AzureSR {
 
 /* 설정에 따라 음성 인식 엔진 선택 (기기에 음성 인식이 없고 Azure 키가 있으면 자동으로 Azure) */
 function getEngine(){
-  const useAzure = cfg.sttProvider === 'azure' || (!DeviceSR && cfg.azureKey);
+  const useAzure = cfg.sttProvider === 'azure' || (!DeviceSR && hasAzure());
   if (useAzure){
-    if (!cfg.azureKey){ toast('Azure 음성 인식을 쓰려면 ☰ → ⚙ 설정에 Azure 키를 넣으세요', 4200); return null; }
+    if (!hasAzure()){ toast('Azure 음성 인식을 쓰려면 ☰ → ⚙ 설정에 사용 코드를 넣으세요', 4200); return null; }
     return AzureSR;
   }
   if (!DeviceSR){ noSR(); return null; }
@@ -808,6 +868,7 @@ function srErrorText(code, lang){
     'language-not-supported': `${LANGS[lang].name} 음성 인식을 이 브라우저가 지원하지 않아요`,
     'network': '음성 인식에 인터넷 연결이 필요해요',
     'azure-auth': 'Azure 키나 리전이 맞지 않아요. 설정을 확인하세요',
+    'bad-code': '사용 코드가 맞지 않아요. 설정에서 확인하세요',
     'azure-sdk': 'Azure 음성 인식을 불러오지 못했어요. 인터넷 연결을 확인하세요',
     'azure': 'Azure 음성 인식 중 문제가 생겼어요'
   }[code] || '음성 인식 오류: ' + code;
@@ -927,7 +988,7 @@ function startListen(){
   r.onerror = e => {
     if (e.error === 'aborted' || e.error === 'no-speech') return;
     toast(srErrorText(e.error, from));
-    if (['not-allowed', 'service-not-allowed', 'language-not-supported', 'azure-auth', 'azure-sdk', 'azure'].includes(e.error)) stopListen();
+    if (['not-allowed', 'service-not-allowed', 'language-not-supported', 'azure-auth', 'azure-sdk', 'azure', 'bad-code'].includes(e.error)) stopListen();
   };
   r.onend = () => {
     if (live && !live.el.querySelector('.src').textContent){ live.remove(); }
@@ -984,7 +1045,7 @@ const TTS_PROVIDERS = {
       if (!('speechSynthesis' in window)) return reject(new Error('TTS 미지원 브라우저'));
       const voice = speechSynthesis.getVoices().find(v => v.lang.replace('_', '-').toLowerCase().startsWith(lang));
       if (!voice && lang === 'mn'){
-        toast('이 기기에 몽골어 음성이 없어요. 설정에서 Azure TTS를 연결하세요.', 4000);
+        toast('몽골어 목소리를 들으려면 설정에 사용 코드를 넣으세요.', 4000);
         return resolve();   // 다른 언어 음성으로 키릴 문자를 엉뚱하게 읽지 않도록 건너뜀
       }
       const u = new SpeechSynthesisUtterance(text);
@@ -1019,22 +1080,22 @@ const TTS_PROVIDERS = {
     await playAudioBuffer(await res.arrayBuffer());
   },
 
-  /* 3) 내 서버/프록시 — { text, lang } 를 POST 하면 mp3 바이너리를 돌려주는 엔드포인트 */
-  async proxy(text, lang){
-    if (!cfg.ttsUrl) throw new Error('TTS 프록시 URL이 없어요');
-    const res = await fetch(cfg.ttsUrl, {
+  /* 3) 중계 서버 — { text, lang, voice } 를 보내면 mp3를 돌려줌 */
+  async server(text, lang){
+    const res = await serverFetch('/tts', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ text, lang, voice: cfg.azureVoice })
     });
-    if (!res.ok) throw new Error('TTS 프록시 ' + res.status);
+    if (res.status === 401) throw new Error('사용 코드가 맞지 않아요');
+    if (!res.ok) throw new Error('서버 ' + res.status);
     await playAudioBuffer(await res.arrayBuffer());
   }
 };
 
 async function speak(text, lang){
-  // 한국어는 기기 내장 음성으로 충분 → 몽골어만 선택한 공급자 사용
-  const provider = lang === 'ko' ? 'browser' : cfg.ttsProvider;
+  // 한국어는 기기 내장 음성으로 충분 → 몽골어는 서버 > Azure 키 > 기기 순
+  const provider = lang === 'ko' ? 'browser' : useServer() ? 'server' : cfg.azureKey ? 'azure' : 'browser';
   try { await TTS_PROVIDERS[provider](text, lang); }
   catch (err) { toast('음성 출력 실패: ' + err.message); }
 }
@@ -1175,9 +1236,39 @@ dlg.addEventListener('close', () => {
     if (el) cfg[k] = el.value.trim();
   }
   saveJSON(CFG_KEY, cfg);
-  toast('저장했어요');
-  if (cfg.sttProvider === 'azure' && cfg.azureKey) loadAzureSDK().catch(() => {});   // 미리 불러와 첫 마이크 반응을 빠르게
+  sttToken = null;
+  if (cfg.sttProvider === 'azure' && hasAzure()) loadAzureSDK().catch(() => {});   // 미리 불러와 첫 마이크 반응을 빠르게
+  if (useServer()){
+    checkCode(cfg.accessCode).then(ok => toast(ok ? '저장했어요 · 사용 코드 확인 완료' : '저장했어요 · 사용 코드가 맞지 않아요', 3000));
+  } else toast('저장했어요');
 });
+
+/* 사용 코드 확인 — 서버의 /ping 에 코드를 보내 확인 */
+async function checkCode(code){
+  if (!serverBase()) return false;
+  try {
+    const res = await fetch(serverBase() + '/ping', { method: 'POST', headers: { 'x-access-code': code } });
+    return res.ok;
+  } catch { return false; }
+}
+
+/* 처음 실행: 사용 코드 입력 창 */
+const welcome = $('#welcome');
+$('#welcomeForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const code = $('#w-code').value.trim();
+  if (!code) return;
+  $('#w-ok').disabled = true;
+  $('#w-err').textContent = '확인 중…';
+  const ok = await checkCode(code);
+  $('#w-ok').disabled = false;
+  if (!ok){ $('#w-err').textContent = '코드가 맞지 않거나 서버에 연결할 수 없어요.'; return; }
+  cfg.accessCode = code;
+  saveJSON(CFG_KEY, cfg);
+  welcome.close();
+  toast('준비됐어요! 마이크를 눌러 말해 보세요');
+});
+$('#w-later').addEventListener('click', () => welcome.close());
 
 /* =========================================================
    마스코트 몽글이 — 누르면 몽골어로 "안녕하세요"
@@ -1231,8 +1322,7 @@ async function greet(){
   greet._t = setTimeout(() => { g.hidden = true; m.classList.remove('hi'); }, 2600);
 
   try { if (await playHelloFile()) return; } catch {}
-  const hasCloudTTS = (cfg.ttsProvider === 'azure' && cfg.azureKey) || (cfg.ttsProvider === 'proxy' && cfg.ttsUrl);
-  if (hasCloudTTS){ await speak(GREETING, 'mn'); return; }
+  if (hasAzure()){ await speak(GREETING, 'mn'); return; }
   await speakCyrillic(GREETING);
 }
 $('#mascot').addEventListener('click', greet);
@@ -1245,8 +1335,13 @@ function boot(){
   renderListen();
   setFlip(ui.flipped);
   setView(ui.view);
-  if (cfg.sttProvider === 'azure' && cfg.azureKey) loadAzureSDK().catch(() => {});
-  if (!cfg.apiKey && !cfg.proxyUrl) setTimeout(() => toast('메뉴 ☰ → 설정에서 API 키를 입력하세요', 3500), 600);
+  if (cfg.sttProvider === 'azure' && hasAzure()) loadAzureSDK().catch(() => {});
+  // 아이폰은 기기 받아쓰기에 몽골어가 없어서 처음부터 Azure 음성 인식을 기본으로
+  if (!loadJSON(CFG_KEY, null)?.sttProvider && /iPhone|iPad|iPod/.test(navigator.userAgent)) cfg.sttProvider = 'azure';
+  if (!isReady()){
+    if (serverBase()) setTimeout(() => { try { welcome.showModal(); } catch {} }, 400);
+    else setTimeout(() => toast('메뉴 ☰ → ⚙ 설정에서 사용 코드를 입력하세요', 3500), 600);
+  }
 }
 boot();
 

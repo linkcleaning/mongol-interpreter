@@ -5,13 +5,22 @@
 - 대화 모드: 화면 위·아래 칸으로 나눠 마주 앉아 대화
 - 듣기 모드: 한쪽 말을 계속 듣고 문장마다 번역
 - 기록: 날짜별 번역 기록
-- 번역: Anthropic Claude API / 음성 인식: 브라우저 내장 또는 Azure Speech(아이폰 권장) / 몽골어 음성: Azure Speech
+- 번역: Anthropic Claude / 음성 인식: 기기 내장 또는 Azure Speech(아이폰) / 몽골어 음성: Azure Speech
 
-## 사용
-1. 휴대폰 Chrome에서 GitHub Pages 주소 열기 → 메뉴 → 홈 화면에 추가
-2. ☰ → ⚙ 설정에서 Anthropic API 키, Azure 키(리전 koreacentral) 입력
+## 구성
+- `index.html` 앱 전체 · `sw.js` 오프라인 캐시 · `manifest.json` 설치 정보
+- `worker.js` Cloudflare Worker 중계 서버 — API 키는 여기에만 보관, 사용자는 **사용 코드**만 입력
 
-API 키는 코드에 넣지 말고 앱 설정에만 입력하세요 (각 기기에만 저장됨).
+## 사용자
+1. 휴대폰에서 앱 주소 열기 → 홈 화면에 추가
+2. 처음 열면 나오는 창에 **사용 코드** 입력
+
+## 관리자
+- Worker 환경 변수: `ANTHROPIC_API_KEY`, `AZURE_KEY`, `ACCESS_CODE`(쉼표로 여러 개), `AZURE_REGION`, `ALLOWED_ORIGIN`
+- `index.html`의 `DEFAULT_SERVER`에 Worker 주소 입력
+- 사용 코드를 바꾸면 기존 사용자는 새 코드를 다시 입력해야 함
+
+API 키는 절대 이 저장소에 올리지 마세요.
 
 ## 마스코트 인사 소리
-`hello-mn.mp3`(몽골어 "Сайн байна уу" 녹음)를 이 폴더에 올리면 몽글이를 눌렀을 때 그 소리가 납니다.
+`hello-mn.mp3`(몽골어 "Сайн байна уу" 녹음)를 올리면 몽글이를 눌렀을 때 그 소리가 납니다.
