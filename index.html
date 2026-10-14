@@ -1,0 +1,1134 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<meta name="theme-color" content="#f5f6f9">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="한몽 통역">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>한몽 통역</title>
+<style>
+  /* Layout: 상단 앱바 · 화면 상하 2분할(위 칸은 마주 앉은 상대용으로 180° 회전) · 칸마다 둥근 마이크 1개 */
+  :root{
+    --bg:#f5f6f9; --surface:#ffffff; --ink:#1b1d22; --ink-2:#3d4149; --muted:#7a7f89; --line:#dfe2e8;
+    --soft:#eceff5; --split:#b4bac6; --ko:#2f5bd3; --mn:#c8373e; --sel:#e8edfb;
+    --shadow:0 2px 12px rgba(27,29,34,.08);
+    --pop:0 10px 36px rgba(27,29,34,.16);
+    --f:-apple-system,BlinkMacSystemFont,"SamsungOne","Samsung Sans","Apple SD Gothic Neo","Noto Sans KR","Noto Sans","Segoe UI",Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f1013; --surface:#1b1d22; --ink:#eef0f4; --ink-2:#c9cdd5; --muted:#8d929c; --line:#2c2f36;
+      --soft:#24272e; --split:#4a505c; --ko:#7b9cf2; --mn:#ef7a7f; --sel:#232a3d;
+      --shadow:none; --pop:0 10px 36px rgba(0,0,0,.5); color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1013; --surface:#1b1d22; --ink:#eef0f4; --ink-2:#c9cdd5; --muted:#8d929c; --line:#2c2f36;
+    --soft:#24272e; --split:#4a505c; --ko:#7b9cf2; --mn:#ef7a7f; --sel:#232a3d;
+    --shadow:none; --pop:0 10px 36px rgba(0,0,0,.5); color-scheme:dark;
+  }
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{display:flex;flex-direction:column;background:var(--bg);color:var(--ink);font:16px/1.5 var(--f);height:100dvh;overflow:hidden}
+  button{font:inherit;color:inherit;cursor:pointer}
+  [hidden]{display:none!important}
+  :focus-visible{outline:2px solid var(--ko);outline-offset:2px}
+  .ico{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+  .flag{display:inline-block;flex:none;height:14px;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+  .flag.kr{width:21px}
+  .flag.mn{width:28px}
+
+  /* ---------- 앱바 ---------- */
+  .appbar{display:flex;align-items:center;gap:4px;padding:calc(env(safe-area-inset-top) + 8px) 8px 8px}
+  .ibtn{width:44px;height:44px;border:0;background:transparent;border-radius:50%;display:grid;place-items:center;color:var(--ink-2)}
+  .ibtn:active{background:var(--soft)}
+  .appbar{position:relative}
+  .appbar .title{flex:1;min-width:0;padding-left:4px}
+  .trow{display:flex;align-items:baseline;gap:7px;min-width:0}
+  .trow h1{flex:none}
+  .mnname{font-size:11.5px;font-weight:500;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;letter-spacing:.01em}
+
+  /* 마스코트 몽글이 */
+  .mascot{width:48px;height:48px;border:0;background:transparent;padding:0;border-radius:50%;flex:none;touch-action:manipulation}
+  .mascot svg{width:100%;height:100%;display:block;overflow:visible;animation:bob 3.2s ease-in-out infinite;transform-origin:50% 90%}
+  .mascot .hand{transform-origin:46px 52px}
+  .mascot.hi svg{animation:hop .9s ease}
+  .mascot.hi .hand{animation:wave .9s ease}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+  @keyframes hop{0%{transform:translateY(0) rotate(0)}25%{transform:translateY(-7px) rotate(-6deg)}50%{transform:translateY(0) rotate(4deg)}75%{transform:translateY(-3px) rotate(-2deg)}100%{transform:none}}
+  @keyframes wave{0%,100%{transform:rotate(0)}20%{transform:rotate(-28deg)}40%{transform:rotate(10deg)}60%{transform:rotate(-24deg)}80%{transform:rotate(6deg)}}
+  .greet{position:absolute;z-index:24;top:calc(100% - 4px);right:56px;display:flex;flex-direction:column;align-items:flex-end;gap:1px;
+    background:var(--surface);border:1px solid var(--line);box-shadow:var(--pop);border-radius:18px 4px 18px 18px;padding:9px 14px;
+    animation:pop .25s ease}
+  .greet b{font-size:16px;color:var(--ink)}
+  .greet span{font-size:12px;color:var(--muted)}
+  @keyframes pop{from{opacity:0;transform:translateY(-6px) scale(.96)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion: reduce){.mascot svg,.mascot.hi svg,.mascot.hi .hand{animation:none}.greet{animation:none}}
+  .appbar h1{margin:0;font-size:21px;font-weight:700;letter-spacing:-.01em;line-height:1.2}
+  .appbar small{display:block;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  main{flex:1;min-height:0;display:flex;flex-direction:column}
+  main > section{flex:1;min-height:0;display:flex;flex-direction:column}
+
+  /* ---------- 대화 모드 ---------- */
+  .pane{flex:1;min-height:0;display:flex;flex-direction:column;padding:0 22px;position:relative}
+  body.flipped .pane.top{transform:rotate(180deg)}
+  .lang{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--ink-2);padding:12px 0 4px}
+  .split{position:relative;height:2px;background:var(--split);margin:10px 22px;flex:none;border-radius:2px}
+  .knot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:6px;
+    background:var(--bg);border:1.5px solid var(--split);border-radius:999px;padding:4px 10px}
+  .knot .ico{width:16px;height:16px;color:var(--muted)}
+  .feed{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:16px;padding:8px 0 12px;overscroll-behavior:contain}
+  .placeholder{margin:auto;text-align:center;color:var(--muted);font-size:16px;line-height:1.65;max-width:290px;text-wrap:balance;padding:8px 0}
+
+  .msg{display:flex;flex-direction:column;gap:2px;max-width:100%}
+  .msg .t{margin:0;white-space:pre-wrap;word-break:break-word}
+  .msg.out{align-self:flex-end;align-items:flex-end;max-width:85%;text-align:right}
+  .msg.out .t{font-size:16px;color:var(--muted)}
+  .msg.in{align-self:flex-start;max-width:94%}
+  .msg.in .t{font-size:22px;line-height:1.42;font-weight:500;color:var(--ink);letter-spacing:-.01em}
+  .note{font-size:12.5px;color:var(--muted)}
+  .note.err{color:var(--mn)}
+  .note:empty{display:none}
+  .pending .t{color:var(--muted);font-weight:400}
+  .dots::after{content:"···";letter-spacing:2px;animation:blink 1.2s infinite}
+  @keyframes blink{50%{opacity:.3}}
+  .listening .t:empty::after{content:"듣는 중…";color:var(--ko)}
+  .msg.out.mn.listening .t:empty::after{content:"Сонсож байна…";color:var(--mn)}
+  .speak{align-self:flex-start;display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;color:var(--muted);font-size:12.5px;padding:4px 0}
+  .speak .ico{width:18px;height:18px}
+  .msg.out .speak{align-self:flex-end}
+
+  .type-row{display:flex;gap:8px;padding:4px 0 8px}
+  .type-row input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:22px;padding:10px 16px;font:16px var(--f)}
+  .type-row button{width:44px;height:44px;border-radius:50%;border:0;background:var(--ko);color:#fff;display:grid;place-items:center;flex:none}
+  .pane.mn .type-row button{background:var(--mn)}
+  .type-row .ico{width:20px;height:20px}
+
+  .mic-wrap{display:flex;justify-content:center;padding:6px 0 16px}
+  .pane.bottom .mic-wrap,#viewListen .mic-wrap{padding-bottom:calc(env(safe-area-inset-bottom) + 18px)}
+  .pane.top .mic-wrap{padding-bottom:12px}
+  .mic{width:64px;height:64px;border-radius:50%;border:0;background:var(--surface);color:var(--ko);display:grid;place-items:center;
+    box-shadow:var(--shadow), 0 0 0 1px var(--line);touch-action:manipulation;transition:transform .12s, background .2s, color .2s}
+  .mic.mn{color:var(--mn)}
+  .mic .ico{width:30px;height:30px}
+  .mic:active{transform:scale(.95)}
+  .mic.active{background:var(--ko);color:#fff;box-shadow:0 0 0 0 rgba(47,91,211,.4);animation:ring 1.5s infinite}
+  .mic.mn.active{background:var(--mn);animation-name:ringmn}
+  @keyframes ring{0%{box-shadow:0 0 0 0 rgba(47,91,211,.38)}80%,100%{box-shadow:0 0 0 18px rgba(47,91,211,0)}}
+  @keyframes ringmn{0%{box-shadow:0 0 0 0 rgba(200,55,62,.38)}80%,100%{box-shadow:0 0 0 18px rgba(200,55,62,0)}}
+  @media (prefers-reduced-motion: reduce){.mic.active{animation:none}.dots::after{animation:none}}
+
+  /* ---------- 듣기 모드 ---------- */
+  #viewListen{padding:0 22px}
+  .dir{align-self:center;display:inline-flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--surface);
+    border-radius:999px;padding:9px 16px;font-size:15px;color:var(--ink-2);margin:4px 0 6px}
+  .dir .ico{width:18px;height:18px;color:var(--muted)}
+  .dir:disabled{opacity:.55}
+  .msg.pair{align-self:stretch;padding-bottom:14px;border-bottom:1px solid var(--line)}
+  .msg.pair .src{margin:0;font-size:14px;color:var(--muted)}
+  .msg.pair .t{font-size:20px;font-weight:500;line-height:1.42}
+
+  /* ---------- 기록 ---------- */
+  #viewHistory{padding:0 22px}
+  .hist-bar{display:flex;align-items:center;justify-content:space-between;padding:4px 0 8px;font-size:13px;color:var(--muted)}
+  .hist-bar button{border:0;background:transparent;color:var(--mn);font-size:14px;padding:6px 4px}
+  .day{font-size:13px;font-weight:600;color:var(--muted);margin:14px 0 2px}
+  .hist{display:flex;flex-direction:column;gap:3px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .hist .meta{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .hist .meta .flag{height:11px}
+  .hist .meta .flag.kr{width:16.5px}
+  .hist .meta .flag.mn{width:22px}
+  .chip{border:1px solid var(--line);border-radius:999px;padding:0 7px;font-size:11px}
+  .hist .src{margin:0;font-size:14px;color:var(--muted)}
+  .hist .dst{margin:0;font-size:17px}
+
+  /* ---------- 서랍 메뉴 ---------- */
+  .drawer{position:fixed;inset:0;z-index:30;visibility:hidden}
+  .drawer.open{visibility:visible}
+  .scrim{position:absolute;inset:0;background:rgba(0,0,0,.32);opacity:0;transition:opacity .2s}
+  .drawer.open .scrim{opacity:1}
+  .panel{position:absolute;top:0;bottom:0;left:0;width:min(82vw,320px);background:var(--surface);border-radius:0 26px 26px 0;
+    padding:calc(env(safe-area-inset-top) + 10px) 14px 20px;transform:translateX(-100%);transition:transform .22s ease;display:flex;flex-direction:column;gap:4px}
+  .drawer.open .panel{transform:none}
+  .panel .ptop{display:flex;justify-content:flex-end;padding-bottom:18px}
+  .nav{display:flex;align-items:center;gap:16px;border:0;background:transparent;border-radius:16px;padding:14px 14px;font-size:16px;text-align:left;color:var(--ink)}
+  .nav[aria-current="true"]{background:var(--sel);color:var(--ko);font-weight:600}
+  .navsep{border-top:1px dashed var(--line);margin:8px 14px}
+  .panel .foot{margin-top:auto;padding:0 14px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px}
+
+  /* ---------- ⋮ 메뉴 ---------- */
+  .popover{position:fixed;z-index:25;top:calc(env(safe-area-inset-top) + 56px);right:12px;min-width:230px;background:var(--surface);
+    border-radius:22px;box-shadow:var(--pop);padding:6px 0;display:flex;flex-direction:column}
+  .opt{display:flex;align-items:center;justify-content:space-between;gap:16px;border:0;background:transparent;padding:14px 20px;font-size:15.5px;text-align:left;color:var(--ink)}
+  .opt[aria-checked="true"]{color:var(--ko);font-weight:600}
+  .opt .ico{width:20px;height:20px;visibility:hidden}
+  .opt[aria-checked="true"] .ico{visibility:visible}
+  .opt.danger{color:var(--mn)}
+  .osep{border-top:1px dashed var(--line);margin:4px 16px}
+
+  /* ---------- 대화상자 ---------- */
+  dialog{border:0;border-radius:26px;padding:0;width:min(420px,92vw);background:var(--surface);color:var(--ink);box-shadow:var(--pop)}
+  dialog::backdrop{background:rgba(0,0,0,.36)}
+  dialog form{padding:22px;display:flex;flex-direction:column;gap:12px;max-height:85dvh;overflow-y:auto}
+  dialog h2{margin:0;font-size:19px}
+  dialog h3{margin:10px 0 0;font-size:13px;font-weight:600;color:var(--ko)}
+  dialog label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+  dialog input,dialog select{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:14px;padding:11px 14px;font:16px var(--f)}
+  dialog .hint{font-size:12px;color:var(--muted);margin:0}
+  dialog p.msgtxt{margin:0;color:var(--ink-2)}
+  dialog .btns{display:flex;gap:8px;margin-top:8px}
+  dialog .btns button{flex:1;border:0;background:transparent;border-radius:14px;padding:12px;font-weight:600;color:var(--ko)}
+  dialog .btns button:active{background:var(--soft)}
+  dialog .btns .danger{color:var(--mn)}
+
+  #toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 110px);transform:translateX(-50%);
+    background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:20px;font-size:14px;max-width:88vw;
+    opacity:0;pointer-events:none;transition:opacity .2s;z-index:40;text-align:center}
+  #toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- 국기·아이콘 스프라이트 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="flag-kr" viewBox="-36 -24 72 48">
+      <rect x="-36" y="-24" width="72" height="48" fill="#fff"/>
+      <g transform="rotate(-56.3099325)">
+        <g id="kr-bars"><path id="kr-bar" d="M-6-26H6v2H-6zm0 3H6v2H-6zm0 3H6v2H-6z" fill="#000"/><use href="#kr-bar" y="44"/></g>
+        <path stroke="#fff" d="M0,17v10"/>
+        <path fill="#cd2e3a" d="M0-12A12 12 0 0 1 0 12z"/>
+        <path fill="#0047a0" d="M0-12A12 12 0 0 0 0 12 6 6 0 0 0 0 0z"/>
+        <circle cy="-6" r="6" fill="#cd2e3a"/>
+      </g>
+      <g transform="rotate(-123.6900675)">
+        <use href="#kr-bars"/>
+        <path stroke="#fff" d="M0-23.5v3M0,17v3.5M0,23.5v3"/>
+      </g>
+    </symbol>
+    <symbol id="flag-mn" viewBox="0 0 1200 600">
+      <rect width="1200" height="600" fill="#c4272f"/>
+      <rect x="400" width="400" height="600" fill="#015197"/>
+      <g fill="#f9cf02">
+        <path d="M200 72c-16 22-24 38-24 54a24 24 0 0 0 48 0c0-16-8-32-24-54z"/>
+        <circle cx="200" cy="178" r="28"/>
+        <path d="M155 216a45 45 0 0 0 90 0a45 30 0 0 1-90 0z"/>
+        <path d="M160 272h80l-40 28z"/>
+        <rect x="160" y="310" width="80" height="14"/>
+        <circle cx="200" cy="385" r="40"/>
+        <rect x="160" y="446" width="80" height="14"/>
+        <path d="M160 470h80l-40 28z"/>
+        <rect x="120" y="272" width="24" height="226"/>
+        <rect x="256" y="272" width="24" height="226"/>
+      </g>
+      <path fill="#c4272f" d="M200 345a20 20 0 0 1 0 40a20 20 0 0 0 0 40a40 40 0 0 1 0-80z"/>
+      <circle cx="200" cy="405" r="7" fill="#f9cf02"/>
+      <circle cx="200" cy="365" r="7" fill="#c4272f"/>
+    </symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 14.5a3.5 3.5 0 0 0 3.5-3.5V5.5a3.5 3.5 0 0 0-7 0V11a3.5 3.5 0 0 0 3.5 3.5z" fill="currentColor" stroke="none"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3.5M8.5 20.5h7"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="18.5" r="1.6" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-flip" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="7.5" rx="3.5"/><rect x="5" y="13.5" width="14" height="7.5" rx="3.5"/><path d="M9 6.8h6M9 17.3h6"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8l2 1.9 2.7-.5 1 2.6 2.5 1.2-.6 2.7 1.5 2.3-2 1.9.2 2.8-2.7.7-1.3 2.4-2.6-1-2.6 1-1.3-2.4-2.7-.7.2-2.8-2-1.9 1.5-2.3-.6-2.7 2.5-1.2 1-2.6 2.7.5z"/></symbol>
+    <symbol id="i-conv" viewBox="0 0 24 24"><path d="M4 5.5h10a2 2 0 0 1 2 2V12a2 2 0 0 1-2 2H9l-3 2.5V14H4a2 2 0 0 1-2-2V7.5a2 2 0 0 1 2-2z"/><path d="M16 9h4a2 2 0 0 1 2 2v4.5a2 2 0 0 1-2 2h-1V20l-3-2.5h-3a2 2 0 0 1-2-2"/></symbol>
+    <symbol id="i-listen" viewBox="0 0 24 24"><path d="M4 5.5h16a2 2 0 0 1 2 2V15a2 2 0 0 1-2 2h-9l-4 3.5V17H4a2 2 0 0 1-2-2V7.5a2 2 0 0 1 2-2z"/><path d="M8 11.2h8M13 8.2l3 3-3 3"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-speak" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4 8h14l-3-3M20 16H6l3 3"/></symbol>
+  </defs>
+</svg>
+
+<header class="appbar">
+  <button class="ibtn" id="menuBtn" aria-label="메뉴 열기"><svg class="ico"><use href="#i-menu"/></svg></button>
+  <div class="title">
+    <div class="trow"><h1>한몽 통역</h1><span class="mnname" lang="mn">Монгол хэлмэрч</span></div>
+    <small id="modeLabel">대화 모드</small>
+  </div>
+  <button class="mascot" id="mascot" aria-label="몽글이 — 몽골어로 인사하기">
+    <svg viewBox="0 0 64 64" aria-hidden="true">
+      <!-- 델(몽골 전통 옷) 깃 -->
+      <path d="M14 64c0-9 8-15 18-15s18 6 18 15z" fill="#2f5bd3"/>
+      <path d="M32 49c-4 0-7 1.5-9 4l9 11 9-11c-2-2.5-5-4-9-4z" fill="#f2c14e"/>
+      <path d="M32 51l-6 3 6 9 6-9z" fill="#2f5bd3"/>
+      <!-- 흔드는 손 -->
+      <g class="hand">
+        <path d="M46 52c3-2 5-6 6-10" stroke="#2f5bd3" stroke-width="6" stroke-linecap="round" fill="none"/>
+        <circle cx="53" cy="39" r="4.6" fill="#ffd7b3"/>
+      </g>
+      <!-- 얼굴 -->
+      <circle cx="32" cy="35" r="15" fill="#ffd7b3"/>
+      <ellipse cx="26.5" cy="36" rx="1.9" ry="2.5" fill="#2a1f1a"/>
+      <ellipse cx="37.5" cy="36" rx="1.9" ry="2.5" fill="#2a1f1a"/>
+      <circle cx="22.5" cy="41.5" r="2.8" fill="#f29a9a" opacity=".75"/>
+      <circle cx="41.5" cy="41.5" r="2.8" fill="#f29a9a" opacity=".75"/>
+      <path d="M28.5 42.5q3.5 3.5 7 0" stroke="#2a1f1a" stroke-width="1.7" stroke-linecap="round" fill="none"/>
+      <!-- 몽골 전통 모자 -->
+      <path d="M17 26c0-11 7-18 15-18s15 7 15 18z" fill="#c8373e"/>
+      <path d="M32 8v18M24 10.5l3 15.5M40 10.5l-3 15.5" stroke="#f2c14e" stroke-width="1.4"/>
+      <rect x="14" y="23.5" width="36" height="6" rx="3" fill="#3a2a20"/>
+      <circle cx="32" cy="6.5" r="3.4" fill="#f2c14e"/>
+      <path d="M32 3.5l1.5-3h-3z" fill="#c8373e"/>
+    </svg>
+  </button>
+  <div class="greet" id="greet" role="status" hidden><b lang="mn">Сайн байна уу!</b><span>안녕하세요!</span></div>
+  <button class="ibtn" id="flipBtn" aria-label="상대방 화면 뒤집기"><svg class="ico"><use href="#i-flip"/></svg></button>
+  <button class="ibtn" id="moreBtn" aria-label="옵션" aria-haspopup="menu"><svg class="ico"><use href="#i-more"/></svg></button>
+</header>
+
+<main>
+  <!-- 대화 모드 -->
+  <section id="viewConv">
+    <div class="pane top mn" data-lang="mn">
+      <div class="lang"><svg class="flag mn"><use href="#flag-mn"/></svg>Монгол хэл</div>
+      <div class="feed" id="mnFeed"></div>
+      <form class="type-row" hidden><input id="mnInput" placeholder="Энд бичнэ үү" enterkeyhint="send" autocomplete="off"><button aria-label="Илгээх"><svg class="ico"><use href="#i-send"/></svg></button></form>
+      <div class="mic-wrap"><button class="mic mn" data-lang="mn" aria-label="Монголоор ярих"><svg class="ico"><use href="#i-mic"/></svg></button></div>
+    </div>
+    <div class="split" aria-hidden="true"><span class="knot"><svg class="flag mn"><use href="#flag-mn"/></svg><svg class="ico"><use href="#i-swap"/></svg><svg class="flag kr"><use href="#flag-kr"/></svg></span></div>
+    <div class="pane bottom ko" data-lang="ko">
+      <div class="lang"><svg class="flag kr"><use href="#flag-kr"/></svg>한국어</div>
+      <div class="feed" id="koFeed"></div>
+      <form class="type-row" hidden><input id="koInput" placeholder="여기에 입력하세요" enterkeyhint="send" autocomplete="off"><button aria-label="보내기"><svg class="ico"><use href="#i-send"/></svg></button></form>
+      <div class="mic-wrap"><button class="mic ko" data-lang="ko" aria-label="한국어로 말하기"><svg class="ico"><use href="#i-mic"/></svg></button></div>
+    </div>
+  </section>
+
+  <!-- 듣기 모드 -->
+  <section id="viewListen" hidden>
+    <button class="dir" id="dirBtn"></button>
+    <div class="feed" id="listenFeed"></div>
+    <div class="mic-wrap"><button class="mic ko" id="listenMic" aria-label="듣기 시작"><svg class="ico"><use href="#i-mic"/></svg></button></div>
+  </section>
+
+  <!-- 기록 -->
+  <section id="viewHistory" hidden>
+    <div class="hist-bar"><span id="histCount"></span><button id="histClear">기록 삭제</button></div>
+    <div class="feed" id="histList"></div>
+  </section>
+</main>
+
+<!-- 서랍 메뉴 -->
+<div class="drawer" id="drawer">
+  <div class="scrim" data-close></div>
+  <aside class="panel" aria-label="메뉴">
+    <div class="ptop"><button class="ibtn" id="settingsBtn" aria-label="설정"><svg class="ico"><use href="#i-gear"/></svg></button></div>
+    <button class="nav" data-view="conv"><svg class="ico"><use href="#i-conv"/></svg>대화 모드</button>
+    <button class="nav" data-view="listen"><svg class="ico"><use href="#i-listen"/></svg>듣기 모드</button>
+    <div class="navsep"></div>
+    <button class="nav" data-view="history"><svg class="ico"><use href="#i-clock"/></svg>기록</button>
+    <div class="foot"><svg class="flag kr"><use href="#flag-kr"/></svg><svg class="flag mn"><use href="#flag-mn"/></svg>한국어 ↔ 몽골어</div>
+  </aside>
+</div>
+
+<!-- ⋮ 옵션 메뉴 -->
+<div class="popover" id="pop" role="menu" hidden>
+  <button class="opt" role="menuitemradio" data-opt="autoMic" data-val="1">마이크 자동 켜기<svg class="ico"><use href="#i-check"/></svg></button>
+  <button class="opt" role="menuitemradio" data-opt="autoMic" data-val="0">마이크 직접 켜기<svg class="ico"><use href="#i-check"/></svg></button>
+  <div class="osep"></div>
+  <button class="opt" role="menuitemradio" data-opt="autoSpeak" data-val="1">번역 결과 읽어주기<svg class="ico"><use href="#i-check"/></svg></button>
+  <button class="opt" role="menuitemradio" data-opt="autoSpeak" data-val="0">번역 결과 읽지 않기<svg class="ico"><use href="#i-check"/></svg></button>
+  <div class="osep"></div>
+  <button class="opt danger" role="menuitem" id="clearOpt">대화 지우기</button>
+</div>
+
+<!-- 설정 -->
+<dialog id="settings">
+  <form method="dialog" id="settingsForm">
+    <h2>설정</h2>
+    <h3>번역 · Claude API</h3>
+    <label>Anthropic API 키
+      <input id="f-apiKey" name="apiKey" type="password" autocomplete="off" placeholder="sk-ant-...">
+    </label>
+    <p class="hint">테스트용으로 이 기기에만 저장돼요. 다른 사람에게 배포할 땐 프록시 URL을 쓰고 키는 비워두세요.</p>
+    <label>프록시 URL (선택)
+      <input id="f-proxyUrl" name="proxyUrl" type="url" placeholder="https://your-worker.workers.dev/translate">
+    </label>
+    <label>모델
+      <select id="f-model" name="model">
+        <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (품질 우선)</option>
+        <option value="claude-haiku-5-5">Claude Haiku 5.5 (속도 우선)</option>
+      </select>
+    </label>
+    <h3>몽골어 음성 출력</h3>
+    <label>TTS 엔진
+      <select id="f-ttsProvider" name="ttsProvider">
+        <option value="browser">기기 내장 (몽골어 음성 없는 기기 많음)</option>
+        <option value="azure">Azure Speech (mn-MN 뉴럴 음성)</option>
+        <option value="proxy">내 서버 / 프록시</option>
+      </select>
+    </label>
+    <label>Azure 키
+      <input id="f-azureKey" name="azureKey" type="password" autocomplete="off">
+    </label>
+    <label>Azure 리전
+      <input id="f-azureRegion" name="azureRegion" placeholder="koreacentral">
+    </label>
+    <label>몽골어 음성
+      <select id="f-azureVoice" name="azureVoice">
+        <option value="mn-MN-YesuiNeural">Yesui (여성)</option>
+        <option value="mn-MN-BataaNeural">Bataa (남성)</option>
+      </select>
+    </label>
+    <label>TTS 프록시 URL
+      <input id="f-ttsUrl" name="ttsUrl" type="url" placeholder="https://your-worker.workers.dev/tts">
+    </label>
+    <div class="btns">
+      <button value="cancel" formnovalidate>취소</button>
+      <button value="save">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 확인 -->
+<dialog id="confirmDlg">
+  <form method="dialog">
+    <p class="msgtxt" id="confirmMsg"></p>
+    <div class="btns">
+      <button value="cancel">취소</button>
+      <button value="ok" class="danger">삭제</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" role="status"></div>
+
+<script>
+/* =========================================================
+   설정 · 상태
+   ========================================================= */
+const CFG_KEY = 'hm-interp-cfg';
+const HIST_KEY = 'hm-interp-history';
+const UI_KEY = 'hm-interp-ui';
+const DEFAULTS = {
+  apiKey: '',
+  proxyUrl: '',
+  model: 'claude-sonnet-5-5',
+  autoSpeak: true,            // 번역 결과 읽어주기
+  autoMic: false,             // 번역 후 상대 마이크 자동 켜기
+  ttsProvider: 'browser',     // 'browser' | 'azure' | 'proxy'
+  azureKey: '',
+  azureRegion: 'koreacentral',
+  azureVoice: 'mn-MN-YesuiNeural',
+  ttsUrl: ''
+};
+const LANGS = {
+  ko: { stt: 'ko-KR', tts: 'ko-KR', name: '한국어', other: 'mn' },
+  mn: { stt: 'mn-MN', tts: 'mn-MN', name: '몽골어', other: 'ko' }
+};
+const MODE_LABEL = { conv: '대화 모드', listen: '듣기 모드', history: '기록' };
+// 미리보기용 예시 대화 (저장되지 않음)
+const DEMO = [
+  { from: 'ko', src: '안녕하세요, 어디까지 가세요?', dst: 'Сайн байна уу? Та хаашаа явах гэж байна вэ?' },
+  { from: 'mn', src: 'Би Бусан өртөө рүү явна.', dst: '저는 부산역으로 가요.' },
+  { from: 'ko', src: '택시로 20분 정도 걸려요.', dst: 'Таксигаар 20 орчим минут явна.' },
+  { from: 'mn', src: 'Баярлалаа!', dst: '감사해요!' }
+].map((d, i) => ({ ...d, mode: 'conv', ts: Date.now() - (4 - i) * 60000 }));
+
+function loadJSON(key, fallback){
+  try { const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; } catch { return fallback; }
+}
+function saveJSON(key, value){
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+let cfg = { ...DEFAULTS, ...loadJSON(CFG_KEY, {}) };
+let history = loadJSON(HIST_KEY, []).map(h => ({ mode: 'conv', ...h }));  // [{from, src, dst, ts, mode}]
+let ui = { view: 'conv', flipped: true, listenFrom: 'mn', ...loadJSON(UI_KEY, {}) };
+const saveUI = () => saveJSON(UI_KEY, ui);
+const saveHistory = () => { if (history.length > 300) history = history.slice(-300); saveJSON(HIST_KEY, history); };
+
+/* =========================================================
+   UI 헬퍼
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const feeds = { ko: $('#koFeed'), mn: $('#mnFeed') };
+const listenFeed = $('#listenFeed');
+// 정적 SVG 조각 (사용자 입력은 절대 넣지 않음)
+const flag = lang => `<svg class="flag ${lang === 'ko' ? 'kr' : 'mn'}" aria-hidden="true"><use href="#flag-${lang === 'ko' ? 'kr' : 'mn'}"/></svg>`;
+const ico = name => `<svg class="ico" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+
+function toast(msg, ms = 2800){
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('show'), ms);
+}
+const scrollEnd = el => { el.scrollTop = el.scrollHeight; };
+
+const PLACEHOLDER = {
+  ko: '음성 통역 또는 텍스트 번역으로 대화할 수 있어요. 음성으로 대화하려면 마이크 버튼을, 텍스트로 대화하려면 이 영역을 누르세요.',
+  mn: 'Дуу хоолой эсвэл бичвэрээр ярилцаж болно. Ярихын тулд микрофоны товчийг, бичихийн тулд энэ хэсгийг дарна уу.',
+  listen: '마이크 버튼을 누르면 상대방 말을 계속 듣고 번역해요. 안내 방송이나 설명을 들을 때 쓰세요.',
+  history: '아직 기록이 없어요.'
+};
+function ensurePlaceholder(el, text){
+  const has = el.querySelector('.msg, .hist');
+  const ph = el.querySelector('.placeholder');
+  if (has && ph) ph.remove();
+  if (!has && !ph){
+    const d = document.createElement('div');
+    d.className = 'placeholder';
+    d.textContent = text;
+    el.appendChild(d);
+  }
+}
+function refreshPlaceholders(){
+  ensurePlaceholder(feeds.ko, PLACEHOLDER.ko);
+  ensurePlaceholder(feeds.mn, PLACEHOLDER.mn);
+  ensurePlaceholder(listenFeed, PLACEHOLDER.listen);
+}
+
+/*
+  메시지 하나 (텍스트는 textContent만 사용 — XSS 방지)
+  kind: 'out'  = 내가 한 말(원문, 오른쪽 흐리게)
+        'in'   = 상대가 한 말의 번역(왼쪽 크게)
+        'pair' = 듣기 모드 (원문 + 번역)
+*/
+function makeMsg(feed, kind, lang){
+  feed.querySelector('.placeholder')?.remove();
+  const el = document.createElement('div');
+  el.className = `msg ${kind} ${lang}`;
+  let src = null;
+  if (kind === 'pair'){ src = document.createElement('p'); src.className = 'src'; el.appendChild(src); }
+  const t = document.createElement('p');
+  t.className = 't';
+  const note = document.createElement('div');
+  note.className = 'note';
+  el.append(t, note);
+  feed.appendChild(el);
+  scrollEnd(feed);
+  return {
+    el,
+    setSrc(s){ if (src) src.textContent = s; scrollEnd(feed); },
+    setText(s){ el.classList.remove('pending', 'listening'); t.classList.remove('dots'); t.textContent = s; scrollEnd(feed); },
+    setPending(){ el.classList.add('pending'); t.textContent = ''; t.classList.add('dots'); },
+    setListening(on){ el.classList.toggle('listening', on); },
+    setNote(s, err = false){ note.textContent = s; note.classList.toggle('err', err); scrollEnd(feed); },
+    setSpeak(text, toLang){
+      el.querySelector('.speak')?.remove();
+      const b = document.createElement('button');
+      b.className = 'speak';
+      b.innerHTML = ico('speak');
+      b.setAttribute('aria-label', '다시 듣기');
+      b.onclick = () => { unlockAudio(); speak(text, toLang); };
+      el.appendChild(b);
+    },
+    remove(){ el.remove(); }
+  };
+}
+
+/* 대화 모드 말풍선: 말한 사람 칸엔 원문, 상대 칸엔 번역 */
+function addConv(lang, srcText = '', { listening = false } = {}){
+  const own = makeMsg(feeds[lang], 'out', lang);
+  const oth = makeMsg(feeds[LANGS[lang].other], 'in', LANGS[lang].other);
+  let src = srcText;
+  own.setText(src);
+  own.setListening(listening);
+  oth.setPending();
+  return {
+    srcText: () => src,
+    setSrc(s){ src = s; own.setText(s); },
+    pending(){ own.setNote(''); oth.setPending(); },
+    done(dst, toLang){ own.setNote(''); own.setSpeak(src, lang); oth.setText(dst); oth.setSpeak(dst, toLang); },
+    fail(msg){ own.setNote(msg, true); oth.remove(); refreshPlaceholders(); },
+    remove(){ own.remove(); oth.remove(); refreshPlaceholders(); }
+  };
+}
+
+function renderConv(){
+  feeds.ko.innerHTML = '';
+  feeds.mn.innerHTML = '';
+  for (const h of history.filter(h => h.mode === 'conv')){
+    const b = addConv(h.from, h.src);
+    b.done(h.dst, LANGS[h.from].other);
+  }
+  refreshPlaceholders();
+}
+function renderListen(){
+  listenFeed.innerHTML = '';
+  for (const h of history.filter(h => h.mode === 'listen')){
+    const m = makeMsg(listenFeed, 'pair', h.from);
+    m.setSrc(h.src); m.setText(h.dst); m.setSpeak(h.dst, LANGS[h.from].other);
+  }
+  refreshPlaceholders();
+}
+function renderHistory(){
+  const list = $('#histList');
+  list.innerHTML = '';
+  $('#histCount').textContent = `${history.length}개`;
+  $('#histClear').hidden = !history.length;
+  let lastDay = '';
+  for (const h of [...history].reverse()){
+    const d = new Date(h.ts);
+    const day = d.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+    if (day !== lastDay){
+      const dh = document.createElement('div');
+      dh.className = 'day';
+      dh.textContent = day;
+      list.appendChild(dh);
+      lastDay = day;
+    }
+    const item = document.createElement('div');
+    item.className = 'hist';
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.innerHTML = `${flag(h.from)}<span>→</span>${flag(LANGS[h.from].other)}`;
+    const time = document.createElement('span');
+    time.textContent = d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = h.mode === 'listen' ? '듣기' : '대화';
+    meta.append(time, chip);
+    const src = document.createElement('p'); src.className = 'src'; src.textContent = h.src;
+    const dst = document.createElement('p'); dst.className = 'dst'; dst.textContent = h.dst;
+    item.append(meta, src, dst);
+    list.appendChild(item);
+  }
+  ensurePlaceholder(list, PLACEHOLDER.history);
+}
+
+/* =========================================================
+   번역 — Anthropic Claude API
+   ========================================================= */
+const SYSTEM_PROMPTS = {
+  ko: `You are a live interpreter between a Korean speaker and a Mongolian speaker.
+The user message contains a Korean utterance captured by speech recognition (it may contain recognition errors or missing punctuation).
+Translate it into natural, everyday spoken Mongolian (Khalkha, Cyrillic script) — the way a Mongolian person would actually say it in conversation, not a literal or bookish translation.
+Rules:
+- Match the politeness level of the original (use "та" for polite Korean, "чи" only for clearly casual speech).
+- Silently fix obvious speech-recognition errors using the conversation context.
+- Keep names, numbers, prices and dates accurate.
+- Output ONLY the Mongolian translation. No quotes, no romanization, no explanations, no notes.`,
+  mn: `You are a live interpreter between a Mongolian speaker and a Korean speaker.
+The user message contains a Mongolian utterance (Cyrillic) captured by speech recognition (it may contain recognition errors or missing punctuation).
+Translate it into natural, everyday spoken Korean — how a Korean person would actually say it, not a literal translation.
+Rules:
+- Default to polite 해요체 unless the original is clearly casual.
+- Silently fix obvious speech-recognition errors using the conversation context.
+- Keep names, numbers, prices and dates accurate.
+- Output ONLY the Korean translation. No quotes, no explanations, no notes.`
+};
+
+async function translate(text, from, mode){
+  // 같은 모드의 최근 6턴을 맥락으로 함께 보내 대명사·생략 표현을 더 정확하게 번역
+  const ctx = history.filter(h => h.mode === mode).slice(-6)
+    .map(h => `[${h.from.toUpperCase()}] ${h.src}  =>  ${h.dst}`)
+    .join('\n');
+  const content = (ctx ? `<context>\n${ctx}\n</context>\n\n` : '') + `<utterance>${text}</utterance>`;
+  const body = { model: cfg.model, max_tokens: 1024, system: SYSTEM_PROMPTS[from], messages: [{ role: 'user', content }] };
+
+  const useProxy = !!cfg.proxyUrl;
+  if (!useProxy && !cfg.apiKey) throw new Error('메뉴 ☰ → 설정에서 API 키를 입력하세요');
+
+  const res = await fetch(useProxy ? cfg.proxyUrl : 'https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: useProxy
+      ? { 'content-type': 'application/json' }
+      : {
+          'content-type': 'application/json',
+          'x-api-key': cfg.apiKey,
+          'anthropic-version': '2023-06-01',
+          // 브라우저에서 직접 호출할 때 필요한 헤더 (테스트 전용)
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok){
+    let msg = `${res.status}`;
+    try { const j = await res.json(); msg += ` ${j.error?.message || ''}`; } catch {}
+    throw new Error('번역 실패: ' + msg);
+  }
+  const data = await res.json();
+  return (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
+}
+
+/* 대화 모드: 한 마디 번역 → (읽어주기) → (상대 마이크 자동 켜기) */
+async function handleConv(lang, text, bubble){
+  bubble.setSrc(text);
+  bubble.pending();
+  try {
+    const out = await translate(text, lang, 'conv');
+    const toLang = LANGS[lang].other;
+    bubble.done(out, toLang);
+    history.push({ from: lang, src: text, dst: out, ts: Date.now(), mode: 'conv' });
+    saveHistory();
+    if (cfg.autoSpeak) await speak(out, toLang);
+    if (cfg.autoMic && ui.view === 'conv' && !rec) startConv(toLang);
+  } catch (err) {
+    bubble.fail(err.message);
+  }
+}
+
+/* =========================================================
+   음성 인식 — 대화 모드 (한 마디씩)
+   ========================================================= */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, recLang = null;
+
+function setMicActive(lang){
+  document.querySelectorAll('#viewConv .mic').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+}
+function noSR(){
+  toast('이 브라우저는 음성 인식을 지원하지 않아요. Android Chrome을 권장해요. 화면을 눌러 글로 입력할 수 있어요.', 4200);
+}
+function srErrorText(code, lang){
+  return {
+    'no-speech': '음성이 감지되지 않았어요',
+    'not-allowed': '마이크 권한을 허용해 주세요',
+    'service-not-allowed': '이 기기에서 음성 인식 서비스를 쓸 수 없어요',
+    'language-not-supported': `${LANGS[lang].name} 음성 인식을 이 브라우저가 지원하지 않아요`,
+    'network': '음성 인식에 인터넷 연결이 필요해요'
+  }[code] || '음성 인식 오류: ' + code;
+}
+
+function toggleConv(lang){
+  unlockAudio();
+  stopSpeaking();
+  if (rec){
+    const same = recLang === lang;
+    rec.stop();                                   // 같은 버튼 → 말 끝내고 번역
+    if (!same) setTimeout(() => startConv(lang), 250);   // 다른 버튼 → 전환
+    return;
+  }
+  startConv(lang);
+}
+
+function startConv(lang){
+  if (!SR) return noSR();
+  hideTyping();
+  const r = new SR();
+  r.lang = LANGS[lang].stt;
+  r.interimResults = true;
+  r.continuous = false;
+  r.maxAlternatives = 1;
+
+  const bubble = addConv(lang, '', { listening: true });
+  let finalText = '', failed = false;
+
+  r.onstart = () => setMicActive(lang);
+  r.onresult = e => {
+    let interim = '';
+    finalText = '';
+    for (const res of e.results){
+      if (res.isFinal) finalText += res[0].transcript; else interim += res[0].transcript;
+    }
+    bubble.setSrc((finalText + interim).trim());
+  };
+  r.onerror = e => {
+    if (e.error === 'aborted') return;
+    failed = e.error !== 'no-speech';
+    toast(srErrorText(e.error, lang));
+  };
+  r.onend = () => {
+    rec = null; recLang = null;
+    setMicActive(null);
+    const text = (finalText || bubble.srcText()).trim();
+    if (!text || failed){ bubble.remove(); return; }
+    handleConv(lang, text, bubble);
+  };
+  rec = r; recLang = lang;
+  try { r.start(); } catch { rec = null; recLang = null; bubble.remove(); toast('음성 인식을 시작할 수 없어요'); }
+}
+
+/* =========================================================
+   음성 인식 — 듣기 모드 (계속 듣고 문장마다 번역)
+   ========================================================= */
+let lrec = null, listenOn = false, live = null;
+
+function renderDir(){
+  const from = ui.listenFrom, to = LANGS[from].other;
+  $('#dirBtn').innerHTML = `${flag(from)}<span></span>${ico('swap')}${flag(to)}<span></span>`;
+  const spans = $('#dirBtn').querySelectorAll('span');
+  spans[0].textContent = LANGS[from].name;
+  spans[1].textContent = LANGS[to].name;
+  const mic = $('#listenMic');
+  mic.className = `mic ${from}` + (listenOn ? ' active' : '');
+  mic.dataset.lang = from;
+}
+
+function toggleListen(){
+  unlockAudio();
+  stopSpeaking();
+  if (listenOn) stopListen(); else startListen();
+}
+function stopListen(){
+  listenOn = false;
+  try { lrec?.stop(); } catch {}
+  $('#listenMic').classList.remove('active');
+  $('#dirBtn').disabled = false;
+}
+function startListen(){
+  if (!SR) return noSR();
+  listenOn = true;
+  $('#listenMic').classList.add('active');
+  $('#dirBtn').disabled = true;
+  const from = ui.listenFrom;
+  const r = new SR();
+  r.lang = LANGS[from].stt;
+  r.interimResults = true;
+  r.continuous = true;
+
+  r.onresult = e => {
+    for (let i = e.resultIndex; i < e.results.length; i++){
+      const res = e.results[i];
+      const text = res[0].transcript.trim();
+      if (!text) continue;
+      live ??= makeMsg(listenFeed, 'pair', from);
+      live.setSrc(text);
+      if (res.isFinal){
+        const item = live;
+        live = null;
+        item.setPending();
+        translate(text, from, 'listen')
+          .then(out => {
+            item.setText(out);
+            item.setSpeak(out, LANGS[from].other);
+            history.push({ from, src: text, dst: out, ts: Date.now(), mode: 'listen' });
+            saveHistory();
+          })
+          .catch(err => { item.setText(''); item.setNote(err.message, true); });
+      }
+    }
+  };
+  r.onerror = e => {
+    if (e.error === 'aborted' || e.error === 'no-speech') return;
+    toast(srErrorText(e.error, from));
+    if (['not-allowed', 'service-not-allowed', 'language-not-supported'].includes(e.error)) stopListen();
+  };
+  r.onend = () => {
+    if (live && !live.el.querySelector('.src').textContent){ live.remove(); }
+    live = null;
+    lrec = null;
+    // 브라우저가 중간에 끊어도 듣기 모드가 켜져 있으면 다시 시작
+    if (listenOn) setTimeout(() => { if (listenOn) startListen(); }, 250);
+    else refreshPlaceholders();
+  };
+  lrec = r;
+  try { r.start(); } catch { stopListen(); toast('음성 인식을 시작할 수 없어요'); }
+}
+
+/* =========================================================
+   음성 출력 (TTS) — 공급자 교체 가능한 구조, 끝날 때까지 기다림
+   ========================================================= */
+let actx = null, currentSource = null;
+
+// iOS/Android는 사용자 터치 안에서 오디오를 한 번 열어둬야 이후 비동기 재생이 됨
+function unlockAudio(){
+  try {
+    actx ??= new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    if (!unlockAudio.done && 'speechSynthesis' in window){
+      speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+      unlockAudio.done = true;
+    }
+  } catch {}
+}
+async function playAudioBuffer(arrayBuffer){
+  unlockAudio();
+  const buf = await actx.decodeAudioData(arrayBuffer);
+  stopSpeaking();
+  return new Promise(resolve => {
+    const src = actx.createBufferSource();
+    src.buffer = buf;
+    src.connect(actx.destination);
+    src.onended = resolve;
+    src.start();
+    currentSource = src;
+  });
+}
+function stopSpeaking(){
+  try { currentSource?.stop(); } catch {}
+  currentSource = null;
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+}
+const escXml = s => s.replace(/[<>&'"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&apos;','"':'&quot;'}[c]));
+
+const TTS_PROVIDERS = {
+  /* 1) 기기 내장 Web Speech API — 한국어는 대부분 기기에 있음, 몽골어는 거의 없음 */
+  browser(text, lang){
+    return new Promise((resolve, reject) => {
+      if (!('speechSynthesis' in window)) return reject(new Error('TTS 미지원 브라우저'));
+      const voice = speechSynthesis.getVoices().find(v => v.lang.replace('_', '-').toLowerCase().startsWith(lang));
+      if (!voice && lang === 'mn'){
+        toast('이 기기에 몽골어 음성이 없어요. 설정에서 Azure TTS를 연결하세요.', 4000);
+        return resolve();   // 다른 언어 음성으로 키릴 문자를 엉뚱하게 읽지 않도록 건너뜀
+      }
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = LANGS[lang].tts;
+      if (voice) u.voice = voice;
+      // 일부 안드로이드는 onend가 오지 않아서 시간 제한을 둠
+      const timer = setTimeout(resolve, 2000 + text.length * 160);
+      u.onend = () => { clearTimeout(timer); resolve(); };
+      u.onerror = e => {
+        clearTimeout(timer);
+        ['interrupted', 'canceled'].includes(e.error) ? resolve() : reject(new Error(e.error));
+      };
+      speechSynthesis.speak(u);
+    });
+  },
+
+  /* 2) Azure Speech REST — mn-MN-YesuiNeural / mn-MN-BataaNeural */
+  async azure(text, lang){
+    if (!cfg.azureKey) throw new Error('Azure 키가 설정되지 않았어요');
+    const voice = lang === 'mn' ? cfg.azureVoice : 'ko-KR-SunHiNeural';
+    const ssml = `<speak version="1.0" xml:lang="${LANGS[lang].tts}"><voice name="${voice}">${escXml(text)}</voice></speak>`;
+    const res = await fetch(`https://${cfg.azureRegion}.tts.speech.microsoft.com/cognitiveservices/v1`, {
+      method: 'POST',
+      headers: {
+        'Ocp-Apim-Subscription-Key': cfg.azureKey,
+        'Content-Type': 'application/ssml+xml',
+        'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3'
+      },
+      body: ssml
+    });
+    if (!res.ok) throw new Error('Azure TTS ' + res.status);
+    await playAudioBuffer(await res.arrayBuffer());
+  },
+
+  /* 3) 내 서버/프록시 — { text, lang } 를 POST 하면 mp3 바이너리를 돌려주는 엔드포인트 */
+  async proxy(text, lang){
+    if (!cfg.ttsUrl) throw new Error('TTS 프록시 URL이 없어요');
+    const res = await fetch(cfg.ttsUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text, lang, voice: cfg.azureVoice })
+    });
+    if (!res.ok) throw new Error('TTS 프록시 ' + res.status);
+    await playAudioBuffer(await res.arrayBuffer());
+  }
+};
+
+async function speak(text, lang){
+  // 한국어는 기기 내장 음성으로 충분 → 몽골어만 선택한 공급자 사용
+  const provider = lang === 'ko' ? 'browser' : cfg.ttsProvider;
+  try { await TTS_PROVIDERS[provider](text, lang); }
+  catch (err) { toast('음성 출력 실패: ' + err.message); }
+}
+if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+
+/* =========================================================
+   글로 입력 — 대화 칸의 빈 곳을 누르면 입력창이 열림
+   ========================================================= */
+function hideTyping(){ document.querySelectorAll('.type-row').forEach(f => { f.hidden = true; }); }
+document.querySelectorAll('.pane').forEach(pane => {
+  const lang = pane.dataset.lang;
+  const form = pane.querySelector('.type-row');
+  const input = form.querySelector('input');
+  pane.querySelector('.feed').addEventListener('click', e => {
+    if (e.target.closest('button')) return;
+    hideTyping();
+    form.hidden = false;
+    input.focus();
+  });
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    unlockAudio();
+    input.value = '';
+    form.hidden = true;
+    handleConv(lang, text, addConv(lang, text));
+  });
+  input.addEventListener('blur', () => setTimeout(() => { if (!input.value.trim() && document.activeElement !== input) form.hidden = true; }, 150));
+});
+
+/* =========================================================
+   화면 전환 · 메뉴
+   ========================================================= */
+let wakeLock = null;
+async function keepAwake(on){
+  try {
+    if (on && 'wakeLock' in navigator && !wakeLock){
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } else if (!on && wakeLock){
+      await wakeLock.release();
+      wakeLock = null;
+    }
+  } catch {}
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && ui.view !== 'history') keepAwake(true);
+});
+
+function setView(view){
+  if (rec){ try { rec.abort(); } catch {} }
+  if (listenOn) stopListen();
+  stopSpeaking();
+  hideTyping();
+  ui.view = view;
+  saveUI();
+  $('#viewConv').hidden = view !== 'conv';
+  $('#viewListen').hidden = view !== 'listen';
+  $('#viewHistory').hidden = view !== 'history';
+  $('#flipBtn').hidden = view !== 'conv';
+  $('#modeLabel').textContent = MODE_LABEL[view];
+  document.querySelectorAll('.nav').forEach(n => n.setAttribute('aria-current', String(n.dataset.view === view)));
+  if (view === 'history') renderHistory();
+  if (view === 'listen'){ renderDir(); scrollEnd(listenFeed); }
+  if (view === 'conv') Object.values(feeds).forEach(scrollEnd);
+  keepAwake(view !== 'history');
+}
+
+function setFlip(on){
+  ui.flipped = on;
+  saveUI();
+  document.body.classList.toggle('flipped', on);
+}
+
+const drawer = $('#drawer');
+const openDrawer = on => drawer.classList.toggle('open', on);
+$('#menuBtn').addEventListener('click', () => { closePop(); openDrawer(true); });
+drawer.addEventListener('click', e => { if (e.target.closest('[data-close]')) openDrawer(false); });
+document.querySelectorAll('.nav').forEach(n => n.addEventListener('click', () => { setView(n.dataset.view); openDrawer(false); }));
+
+const pop = $('#pop');
+function syncOpts(){
+  pop.querySelectorAll('[data-opt]').forEach(o => {
+    o.setAttribute('aria-checked', String(cfg[o.dataset.opt] === (o.dataset.val === '1')));
+  });
+}
+function closePop(){ pop.hidden = true; }
+$('#moreBtn').addEventListener('click', e => { e.stopPropagation(); syncOpts(); pop.hidden = !pop.hidden; });
+document.addEventListener('click', e => { if (!pop.hidden && !e.target.closest('#pop')) closePop(); });
+pop.querySelectorAll('[data-opt]').forEach(o => o.addEventListener('click', () => {
+  cfg[o.dataset.opt] = o.dataset.val === '1';
+  saveJSON(CFG_KEY, cfg);
+  syncOpts();
+  setTimeout(closePop, 150);
+}));
+
+function askConfirm(msg){
+  const d = $('#confirmDlg');
+  $('#confirmMsg').textContent = msg;
+  d.showModal();
+  return new Promise(resolve => d.addEventListener('close', () => resolve(d.returnValue === 'ok'), { once: true }));
+}
+async function clearAll(){
+  closePop();
+  if (!await askConfirm('대화 기록을 모두 지울까요?')) return;
+  history = [];
+  saveHistory();
+  renderConv(); renderListen(); renderHistory();
+  toast('지웠어요');
+}
+$('#clearOpt').addEventListener('click', clearAll);
+$('#histClear').addEventListener('click', clearAll);
+
+$('#flipBtn').addEventListener('click', () => {
+  setFlip(!ui.flipped);
+  toast(ui.flipped ? '위쪽 화면을 상대방 방향으로 뒤집었어요' : '위쪽 화면을 바로 놓았어요', 1800);
+});
+document.querySelectorAll('#viewConv .mic').forEach(b => b.addEventListener('click', () => toggleConv(b.dataset.lang)));
+$('#listenMic').addEventListener('click', toggleListen);
+$('#dirBtn').addEventListener('click', () => { ui.listenFrom = LANGS[ui.listenFrom].other; saveUI(); renderDir(); });
+
+/* 설정 */
+const dlg = $('#settings');
+const form = $('#settingsForm');
+$('#settingsBtn').addEventListener('click', () => {
+  openDrawer(false);
+  for (const [k, v] of Object.entries(cfg)){
+    const el = form.elements[k];
+    if (el) el.value = v;
+  }
+  dlg.showModal();
+});
+dlg.addEventListener('close', () => {
+  if (dlg.returnValue !== 'save') return;
+  for (const k of Object.keys(DEFAULTS)){
+    const el = form.elements[k];
+    if (el) cfg[k] = el.value.trim();
+  }
+  saveJSON(CFG_KEY, cfg);
+  toast('저장했어요');
+});
+
+/* =========================================================
+   마스코트 몽글이 — 누르면 몽골어로 "안녕하세요"
+   소리 우선순위:
+   1) 같은 폴더의 hello-mn.mp3 (직접 녹음한 파일을 넣으면 그 소리가 남)
+   2) 설정에서 Azure/프록시 TTS를 연결했으면 몽골어 뉴럴 음성
+   3) 기기 몽골어 음성 → 없으면 러시아어 음성으로 키릴 문자를 읽음 (발음이 비슷함)
+   ========================================================= */
+const GREETING = 'Сайн байна уу!';
+let helloBuf = null, helloChecked = false;
+
+async function playHelloFile(){
+  if (!helloChecked){
+    helloChecked = true;
+    try {
+      const res = await fetch('hello-mn.mp3', { cache: 'no-cache' });
+      const type = res.headers.get('content-type') || '';
+      helloBuf = res.ok && !type.includes('html') ? await res.arrayBuffer() : null;
+    } catch { helloBuf = null; }
+  }
+  if (!helloBuf) return false;
+  await playAudioBuffer(helloBuf.slice(0));
+  return true;
+}
+function speakCyrillic(text){
+  return new Promise(resolve => {
+    if (!('speechSynthesis' in window)) return resolve(false);
+    const voices = speechSynthesis.getVoices();
+    const voice = voices.find(v => v.lang.toLowerCase().startsWith('mn')) || voices.find(v => v.lang.toLowerCase().startsWith('ru'));
+    if (!voice) return resolve(false);
+    const u = new SpeechSynthesisUtterance(text);
+    u.voice = voice;
+    u.lang = voice.lang;
+    u.rate = .92;
+    u.pitch = 1.25;
+    const timer = setTimeout(() => resolve(true), 3000);
+    u.onend = u.onerror = () => { clearTimeout(timer); resolve(true); };
+    speechSynthesis.speak(u);
+  });
+}
+async function greet(){
+  const m = $('#mascot');
+  const g = $('#greet');
+  unlockAudio();
+  stopSpeaking();
+  m.classList.remove('hi');
+  void m.offsetWidth;            // 애니메이션 다시 시작
+  m.classList.add('hi');
+  g.hidden = false;
+  clearTimeout(greet._t);
+  greet._t = setTimeout(() => { g.hidden = true; m.classList.remove('hi'); }, 2600);
+
+  try { if (await playHelloFile()) return; } catch {}
+  const hasCloudTTS = (cfg.ttsProvider === 'azure' && cfg.azureKey) || (cfg.ttsProvider === 'proxy' && cfg.ttsUrl);
+  if (hasCloudTTS){ await speak(GREETING, 'mn'); return; }
+  await speakCyrillic(GREETING);
+}
+$('#mascot').addEventListener('click', greet);
+
+/* =========================================================
+   시작
+   ========================================================= */
+function boot(){
+  renderConv();
+  renderListen();
+  setFlip(ui.flipped);
+  setView(ui.view);
+  if (!cfg.apiKey && !cfg.proxyUrl) setTimeout(() => toast('메뉴 ☰ → 설정에서 API 키를 입력하세요', 3500), 600);
+}
+boot();
+
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW 등록 실패', err));
+  });
+}
+</script>
+</body>
+</html>
