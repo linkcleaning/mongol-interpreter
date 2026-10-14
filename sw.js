@@ -1,13 +1,16 @@
 // 서비스 워커 — 앱 화면(셸)만 캐시. 번역·TTS API 호출은 항상 네트워크로.
 // 파일을 수정해 배포할 때마다 버전 숫자를 올려야 사용자 폰에서 새 버전으로 바뀝니다.
-const CACHE = 'hm-interp-v15';
+const CACHE = 'hm-interp-v16';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './icon.svg',
+  './favicon-32.png',
+  './apple-touch-icon.png',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './icon-maskable-192.png',
+  './icon-maskable-512.png'
 ];
 
 self.addEventListener('install', event => {
