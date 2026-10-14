@@ -372,11 +372,6 @@
 <dialog id="settings">
   <form method="dialog" id="settingsForm">
     <h2 data-i18n="set_title">설정</h2>
-    <h3 data-i18n="set_code_h">사용 코드</h3>
-    <label><span data-i18n="set_code">사용 코드</span>
-      <input id="f-accessCode" name="accessCode" autocomplete="off" autocapitalize="off" data-i18n-ph="set_code_ph">
-    </label>
-    <p class="hint" data-i18n="set_code_hint"></p>
     <h3 data-i18n="set_voice_h">음성</h3>
     <label><span data-i18n="set_stt">말 알아듣기</span>
       <select id="f-sttProvider" name="sttProvider">
@@ -398,6 +393,9 @@
     </label>
     <details class="admin">
       <summary data-i18n="set_admin">관리자 설정</summary>
+      <label><span data-i18n="set_code">사용 코드</span>
+        <input id="f-accessCode" name="accessCode" autocomplete="off" autocapitalize="off" data-i18n-ph="set_code_ph">
+      </label>
       <label><span data-i18n="set_server">서버 주소</span>
         <input id="f-serverUrl" name="serverUrl" type="url" placeholder="https://hanmong.○○○.workers.dev">
       </label>
@@ -477,14 +475,21 @@ const DEFAULTS = {
   azureVoice: 'mn-MN-YesuiNeural'
 };
 const serverBase = () => (cfg.serverUrl || DEFAULT_SERVER).trim().replace(/\/+$/, '');
-const useServer = () => !!(serverBase() && cfg.accessCode);
+const useServer = () => !!serverBase();          // 서버가 있으면 누구나 사용 (코드는 서버가 요구할 때만)
 const hasAzure = () => useServer() || !!cfg.azureKey;
 const isReady = () => useServer() || !!cfg.apiKey;
-function serverFetch(path, opts = {}){
-  return fetch(serverBase() + path, {
+async function serverFetch(path, opts = {}){
+  const res = await fetch(serverBase() + path, {
     ...opts,
-    headers: { ...(opts.headers || {}), 'x-access-code': cfg.accessCode }
+    headers: { ...(opts.headers || {}), ...(cfg.accessCode ? { 'x-access-code': cfg.accessCode } : {}) }
   });
+  // 서버가 사용 코드를 요구하면 입력 창을 띄움
+  if (res.status === 401) askCode();
+  if (res.status === 429) toast(t('e_toomany'), 3500);
+  return res;
+}
+function askCode(){
+  try { if (!welcome.open) welcome.showModal(); } catch {}
 }
 const LANGS = {
   ko: { stt: 'ko-KR', tts: 'ko-KR', other: 'mn' },
@@ -508,7 +513,7 @@ const I18N = {
     hist_clear: '기록 삭제', hist_count: n => `${n}개`, chip_conv: '대화', chip_listen: '듣기',
     ph_listen: '마이크 버튼을 누르면 상대방 말을 계속 듣고 번역해요. 안내 방송이나 설명을 들을 때 쓰세요.',
     ph_history: '아직 기록이 없어요.',
-    set_title: '설정', set_code_h: '사용 코드', set_code: '사용 코드', set_code_ph: '관리자에게 받은 코드',
+    set_title: '설정', set_code_h: '사용 코드', set_code: '사용 코드', set_code_ph: '필요할 때만 입력',
     set_code_hint: '코드만 넣으면 번역·몽골어 음성·음성 인식이 모두 동작해요.',
     set_voice_h: '음성', set_stt: '말 알아듣기',
     stt_device: '기기 내장 (안드로이드 Chrome 권장)', stt_azure: 'Azure Speech (아이폰 권장)',
@@ -518,7 +523,7 @@ const I18N = {
     set_admin_hint: '사용 코드 대신 키를 직접 넣으면 서버 없이 이 기기에서만 동작해요 (키는 이 기기에만 저장).',
     set_anthropic: 'Anthropic API 키', set_azkey: 'Azure 키', set_azregion: 'Azure 리전',
     btn_cancel: '취소', btn_save: '저장', btn_delete: '삭제',
-    w_title: '한몽 통역 시작하기', w_sub: '관리자에게 받은 사용 코드를 입력하세요.',
+    w_title: '한몽 통역 시작하기', w_sub: '지금은 사용 코드가 필요해요. 관리자에게 받은 코드를 입력하세요.',
     w_later: '나중에', w_start: '시작', w_checking: '확인 중…', w_bad: '코드가 맞지 않거나 서버에 연결할 수 없어요.',
     c_clear: '대화 기록을 모두 지울까요?',
     t_saved: '저장했어요', t_saved_ok: '저장했어요 · 사용 코드 확인 완료', t_saved_bad: '저장했어요 · 사용 코드가 맞지 않아요',
@@ -538,7 +543,8 @@ const I18N = {
     e_badcode: '사용 코드가 맞지 않아요. 설정에서 확인하세요',
     e_azsdk: 'Azure 음성 인식을 불러오지 못했어요. 인터넷 연결을 확인하세요',
     e_azure: 'Azure 음성 인식 중 문제가 생겼어요', e_sr: c => '음성 인식 오류: ' + c,
-    tr_fail: '번역 실패: ', tr_need: '메뉴 ☰ → 설정에서 사용 코드를 입력하세요'
+    tr_fail: '번역 실패: ', tr_need: '메뉴 ☰ → 설정에서 사용 코드를 입력하세요',
+    e_toomany: '잠시 후 다시 시도해 주세요 (짧은 시간에 너무 많이 썼어요)'
   },
   mn: {
     appTitle: 'Хэлмэрч', appSub: '한몽 통역', langShort: 'MN',
@@ -552,7 +558,7 @@ const I18N = {
     hist_clear: 'Түүх устгах', hist_count: n => `${n} бичлэг`, chip_conv: 'Яриа', chip_listen: 'Сонсох',
     ph_listen: 'Микрофоны товчийг дарвал хүний яриаг тасралтгүй сонсож орчуулна. Зарлал, тайлбар сонсоход ашиглаарай.',
     ph_history: 'Одоогоор түүх алга.',
-    set_title: 'Тохиргоо', set_code_h: 'Нэвтрэх код', set_code: 'Нэвтрэх код', set_code_ph: 'Админаас авсан код',
+    set_title: 'Тохиргоо', set_code_h: 'Нэвтрэх код', set_code: 'Нэвтрэх код', set_code_ph: 'Шаардлагатай үед л оруулна',
     set_code_hint: 'Кодоо оруулбал орчуулга, монгол дуу хоолой, яриа таних бүгд ажиллана.',
     set_voice_h: 'Дуу хоолой', set_stt: 'Яриа таних',
     stt_device: 'Төхөөрөмжийн (Android)', stt_azure: 'Azure Speech (iPhone)',
@@ -562,7 +568,7 @@ const I18N = {
     set_admin_hint: 'Кодын оронд түлхүүрээ шууд оруулбал сервергүйгээр зөвхөн энэ төхөөрөмж дээр ажиллана.',
     set_anthropic: 'Anthropic API түлхүүр', set_azkey: 'Azure түлхүүр', set_azregion: 'Azure бүс',
     btn_cancel: 'Болих', btn_save: 'Хадгалах', btn_delete: 'Устгах',
-    w_title: 'Хэлмэрчийг эхлүүлэх', w_sub: 'Админаас авсан нэвтрэх кодоо оруулна уу.',
+    w_title: 'Хэлмэрчийг эхлүүлэх', w_sub: 'Одоогоор нэвтрэх код шаардлагатай. Админаас авсан кодоо оруулна уу.',
     w_later: 'Дараа', w_start: 'Эхлэх', w_checking: 'Шалгаж байна…', w_bad: 'Код буруу эсвэл сервертэй холбогдож чадсангүй.',
     c_clear: 'Ярианы бүх түүхийг устгах уу?',
     t_saved: 'Хадгаллаа', t_saved_ok: 'Хадгаллаа · код баталгаажлаа', t_saved_bad: 'Хадгаллаа · код буруу байна',
@@ -582,7 +588,8 @@ const I18N = {
     e_badcode: 'Нэвтрэх код буруу байна. Тохиргоогоо шалгана уу',
     e_azsdk: 'Azure яриа таних ачаалж чадсангүй. Интернэтээ шалгана уу',
     e_azure: 'Azure яриа танихад алдаа гарлаа', e_sr: c => 'Яриа танихад алдаа: ' + c,
-    tr_fail: 'Орчуулга амжилтгүй: ', tr_need: '☰ цэс → тохиргоонд нэвтрэх кодоо оруулна уу'
+    tr_fail: 'Орчуулга амжилтгүй: ', tr_need: '☰ цэс → тохиргоонд нэвтрэх кодоо оруулна уу',
+    e_toomany: 'Түр хүлээгээд дахин оролдоно уу (хэт олон хүсэлт илгээлээ)'
   }
 };
 function t(key, ...args){
@@ -806,6 +813,7 @@ async function translate(text, from, mode){
       body: JSON.stringify({ from, text, context: ctx, model: cfg.model })
     });
     if (res.status === 401) throw new Error(t('e_badcode'));
+    if (res.status === 429) throw new Error(t('e_toomany'));
     if (!res.ok) throw new Error(t('tr_fail') + res.status);
     const data = await res.json();
     return (data.text || '').trim();
@@ -1418,7 +1426,7 @@ dlg.addEventListener('close', () => {
   saveJSON(CFG_KEY, cfg);
   sttToken = null;
   if (cfg.sttProvider === 'azure' && hasAzure()) loadAzureSDK().catch(() => {});   // 미리 불러와 첫 마이크 반응을 빠르게
-  if (useServer()){
+  if (useServer() && cfg.accessCode){
     checkCode(cfg.accessCode).then(ok => toast(ok ? t('t_saved_ok') : t('t_saved_bad'), 3000));
   } else toast(t('t_saved'));
 });
@@ -1522,10 +1530,7 @@ function boot(){
   if (cfg.sttProvider === 'azure' && hasAzure()) loadAzureSDK().catch(() => {});
   // 아이폰은 기기 받아쓰기에 몽골어가 없어서 처음부터 Azure 음성 인식을 기본으로
   if (!loadJSON(CFG_KEY, null)?.sttProvider && /iPhone|iPad|iPod/.test(navigator.userAgent)) cfg.sttProvider = 'azure';
-  if (!isReady()){
-    if (serverBase()) setTimeout(() => { try { welcome.showModal(); } catch {} }, 400);
-    else setTimeout(() => toast(t('t_need_code'), 3500), 600);
-  }
+  if (!isReady()) setTimeout(() => toast(t('t_need_code'), 3500), 600);
 }
 boot();
 

@@ -1,13 +1,17 @@
 // 한몽 통역 중계 서버 (Cloudflare Worker)
 // ─────────────────────────────────────────────────────────────
-// 키(Anthropic, Azure)는 이 서버에만 보관하고, 앱 사용자는 "사용 코드"만 입력합니다.
+// 키(Anthropic, Azure)는 이 서버에만 보관합니다. 앱 사용자는 키를 몰라도 됩니다.
 //
 // Cloudflare 대시보드 → Workers → 이 Worker → 설정 → 변수 및 비밀(Variables and Secrets):
 //   ANTHROPIC_API_KEY  (비밀/Secret)  Anthropic API 키 sk-ant-...
-//   AZURE_KEY          (비밀/Secret)  Azure 음성 서비스 키 1
-//   ACCESS_CODE        (비밀/Secret)  사용 코드 — 여러 개면 쉼표로 구분 (예: linkclean2026,guest77)
+//   AZURE_KEY          (비밀/Secret)  Azure 음성 서비스 키
 //   AZURE_REGION       (텍스트)       koreacentral
 //   ALLOWED_ORIGIN     (텍스트)       https://linkcleaning.github.io
+//   ACCESS_CODE        (선택/Secret)  비워두거나 없으면 → 누구나 사용 (공개)
+//                                      값을 넣으면 → 그 코드를 아는 사람만 사용 (쉼표로 여러 개)
+//
+// 요금 보호: 같은 인터넷 주소(IP)에서 1분에 너무 많이 요청하면 잠시 막습니다.
+//           진짜 안전장치는 Anthropic 콘솔의 "월 사용 한도"입니다 — 꼭 설정하세요.
 //
 // 주소:  POST /ping        사용 코드 확인
 //        POST /translate   { from:'ko'|'mn', text, context, model } → { text }
@@ -16,6 +20,20 @@
 // ─────────────────────────────────────────────────────────────
 
 const ALLOWED_MODELS = ['claude-sonnet-5-5', 'claude-haiku-5-5'];
+
+// 1분당 IP별 최대 요청 수 (서버 인스턴스마다 따로 세는 간단한 제한)
+const LIMITS = { '/translate': 20, '/tts': 30, '/stt-token': 10, '/ping': 30 };
+const hits = new Map();   // key → { n, reset }
+function tooMany(ip, path){
+  const max = LIMITS[path];
+  if (!max) return false;
+  const key = ip + path, now = Date.now();
+  let h = hits.get(key);
+  if (!h || h.reset < now){ h = { n: 0, reset: now + 60000 }; hits.set(key, h); }
+  h.n++;
+  if (hits.size > 5000) for (const [k, v] of hits) if (v.reset < now) hits.delete(k);
+  return h.n > max;
+}
 const MAX_TEXT = 1500;      // 한 번에 번역할 최대 글자 수
 const MAX_CONTEXT = 4000;   // 맥락(최근 대화) 최대 글자 수
 
@@ -62,16 +80,20 @@ export default {
     // 허용한 사이트(GitHub Pages)에서 온 요청만 받기
     if (!allowed.includes('*') && origin && !allowed.includes(origin)) return json({ error: 'origin' }, 403);
 
-    // 사용 코드 확인
+    // 사용 코드 확인 — ACCESS_CODE가 비어 있으면 공개 모드(누구나 사용)
     const codes = (env.ACCESS_CODE || '').split(',').map(s => s.trim()).filter(Boolean);
     const code = (request.headers.get('x-access-code') || '').trim();
-    if (!codes.length || !codes.includes(code)) return json({ error: 'bad code' }, 401);
+    if (codes.length && !codes.includes(code)) return json({ error: 'bad code' }, 401);
 
     const { pathname } = new URL(request.url);
+
+    // 사용량 제한 (같은 IP가 짧은 시간에 너무 많이 쓰면 잠시 대기)
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    if (tooMany(ip, pathname)) return json({ error: 'too many' }, 429);
     const region = env.AZURE_REGION || 'koreacentral';
 
     // ---- 코드 확인 ----
-    if (pathname === '/ping') return json({ ok: true });
+    if (pathname === '/ping') return json({ ok: true, public: !codes.length });
 
     // ---- 번역 ----
     if (pathname === '/translate'){

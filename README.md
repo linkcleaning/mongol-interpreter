@@ -9,16 +9,15 @@
 
 ## 구성
 - `index.html` 앱 전체 · `sw.js` 오프라인 캐시 · `manifest.json` 설치 정보
-- `worker.js` Cloudflare Worker 중계 서버 — API 키는 여기에만 보관, 사용자는 **사용 코드**만 입력
+- `worker.js` Cloudflare Worker 중계 서버 — API 키는 여기에만 보관. 기본은 누구나 사용(공개), `ACCESS_CODE`를 넣으면 코드가 있는 사람만 사용
 
 ## 사용자
-1. 휴대폰에서 앱 주소 열기 → 홈 화면에 추가
-2. 처음 열면 나오는 창에 **사용 코드** 입력
+휴대폰에서 앱 주소 열기 → 홈 화면에 추가 → 바로 사용
 
 ## 관리자
-- Worker 환경 변수: `ANTHROPIC_API_KEY`, `AZURE_KEY`, `ACCESS_CODE`(쉼표로 여러 개), `AZURE_REGION`, `ALLOWED_ORIGIN`
+- Worker 환경 변수: `ANTHROPIC_API_KEY`, `AZURE_KEY`, `AZURE_REGION`, `ALLOWED_ORIGIN`, (선택) `ACCESS_CODE`
+- 요금 보호: IP당 1분 사용량 제한 + **Anthropic 콘솔 월 사용 한도 필수**
 - `index.html`의 `DEFAULT_SERVER`에 Worker 주소 입력
-- 사용 코드를 바꾸면 기존 사용자는 새 코드를 다시 입력해야 함
 
 API 키는 절대 이 저장소에 올리지 마세요.
 
