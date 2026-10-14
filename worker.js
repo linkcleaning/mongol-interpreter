@@ -141,9 +141,10 @@ export default {
         headers: {
           'Ocp-Apim-Subscription-Key': env.AZURE_KEY,
           'Content-Type': 'application/ssml+xml',
-          'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3'
+          'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
+          'User-Agent': 'hanmong-interpreter'
         },
-        body: `<speak version="1.0" xml:lang="${lang === 'ko' ? 'ko-KR' : 'mn-MN'}"><voice name="${voice}">${esc(text)}</voice></speak>`
+        body: `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${lang === 'ko' ? 'ko-KR' : 'mn-MN'}"><voice name="${voice}">${esc(text)}</voice></speak>`
       });
       if (!res.ok) return json({ error: 'tts', status: res.status }, 502);
       return new Response(res.body, { headers: { ...cors, 'content-type': 'audio/mpeg' } });

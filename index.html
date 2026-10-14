@@ -1203,13 +1203,14 @@ const TTS_PROVIDERS = {
   async azure(text, lang){
     if (!cfg.azureKey) throw new Error('Azure 키가 설정되지 않았어요');
     const voice = lang === 'mn' ? cfg.azureVoice : 'ko-KR-SunHiNeural';
-    const ssml = `<speak version="1.0" xml:lang="${LANGS[lang].tts}"><voice name="${voice}">${escXml(text)}</voice></speak>`;
+    const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${LANGS[lang].tts}"><voice name="${voice}">${escXml(text)}</voice></speak>`;
     const res = await fetch(`https://${cfg.azureRegion}.tts.speech.microsoft.com/cognitiveservices/v1`, {
       method: 'POST',
       headers: {
         'Ocp-Apim-Subscription-Key': cfg.azureKey,
         'Content-Type': 'application/ssml+xml',
-        'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3'
+        'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
+        'User-Agent': 'hanmong-interpreter'
       },
       body: ssml
     });
