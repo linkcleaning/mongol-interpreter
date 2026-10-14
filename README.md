@@ -5,7 +5,7 @@
 - 대화 모드: 화면 위·아래 칸으로 나눠 마주 앉아 대화
 - 듣기 모드: 한쪽 말을 계속 듣고 문장마다 번역
 - 기록: 날짜별 번역 기록
-- 번역: Anthropic Claude API / 음성 인식: 브라우저 내장 / 몽골어 음성: Azure Speech
+- 번역: Anthropic Claude API / 음성 인식: 브라우저 내장 또는 Azure Speech(아이폰 권장) / 몽골어 음성: Azure Speech
 
 ## 사용
 1. 휴대폰 Chrome에서 GitHub Pages 주소 열기 → 메뉴 → 홈 화면에 추가

@@ -359,7 +359,15 @@
         <option value="claude-haiku-5-5">Claude Haiku 5.5 (속도 우선)</option>
       </select>
     </label>
-    <h3>몽골어 음성 출력</h3>
+    <h3>음성 인식</h3>
+    <label>말 알아듣기
+      <select id="f-sttProvider" name="sttProvider">
+        <option value="device">기기 내장 (안드로이드 Chrome 권장)</option>
+        <option value="azure">Azure Speech (아이폰 권장 · Azure 키 필요)</option>
+      </select>
+    </label>
+    <p class="hint">아이폰은 몽골어 받아쓰기가 없어서 Azure를 고르세요. 아래 칸에 넣은 Azure 키와 리전을 같이 써요.</p>
+    <h3>몽골어 음성 출력 · Azure 키</h3>
     <label>TTS 엔진
       <select id="f-ttsProvider" name="ttsProvider">
         <option value="browser">기기 내장 (몽골어 음성 없는 기기 많음)</option>
@@ -415,6 +423,7 @@ const DEFAULTS = {
   model: 'claude-sonnet-5-5',
   autoSpeak: true,            // 번역 결과 읽어주기
   autoMic: false,             // 번역 후 상대 마이크 자동 켜기
+  sttProvider: 'device',      // 'device' | 'azure' — 음성 인식 엔진
   ttsProvider: 'browser',     // 'browser' | 'azure' | 'proxy'
   azureKey: '',
   azureRegion: 'koreacentral',
@@ -672,14 +681,124 @@ async function handleConv(lang, text, bubble){
 /* =========================================================
    음성 인식 — 대화 모드 (한 마디씩)
    ========================================================= */
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const DeviceSR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null, recLang = null;
+
+/*
+  Azure Speech 음성 인식 — 브라우저 SpeechRecognition과 같은 모양으로 감싼 어댑터.
+  (start/stop/abort, onstart/onresult/onerror/onend, e.results[i].isFinal / [0].transcript)
+  아이폰처럼 기기 받아쓰기에 몽골어가 없을 때 사용. SDK는 처음 쓸 때만 불러옴.
+*/
+const SDK_URL = 'https://cdn.jsdelivr.net/npm/microsoft-cognitiveservices-speech-sdk@1.45.0/distrib/browser/microsoft.cognitiveservices.speech.sdk.bundle-min.js';
+let sdkPromise = null;
+function loadAzureSDK(){
+  if (window.SpeechSDK) return Promise.resolve(window.SpeechSDK);
+  sdkPromise ??= new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = SDK_URL;
+    s.async = true;
+    s.onload = () => window.SpeechSDK ? resolve(window.SpeechSDK) : reject(new Error('sdk'));
+    s.onerror = () => { sdkPromise = null; reject(new Error('sdk')); };
+    document.head.appendChild(s);
+  });
+  return sdkPromise;
+}
+
+class AzureSR {
+  constructor(){
+    this.lang = 'ko-KR';
+    this.continuous = false;
+    this.interimResults = true;
+    this.maxAlternatives = 1;
+    this._finals = [];
+    this._interim = '';
+    this._done = false;
+  }
+  start(){
+    loadAzureSDK()
+      .then(sdk => this._run(sdk))
+      .catch(() => { this._err('azure-sdk'); this._finish(); });
+  }
+  _run(sdk){
+    if (this._done) return;
+    try {
+      const sc = sdk.SpeechConfig.fromSubscription(cfg.azureKey, cfg.azureRegion || 'koreacentral');
+      sc.speechRecognitionLanguage = this.lang;
+      const r = this._r = new sdk.SpeechRecognizer(sc, sdk.AudioConfig.fromDefaultMicrophoneInput());
+      r.recognizing = (s, e) => { clearTimeout(this._idle); this._emit(e.result.text, false); };
+      r.recognized = (s, e) => {
+        if (e.result.reason === sdk.ResultReason.RecognizedSpeech && e.result.text){
+          this._emit(e.result.text, true);
+          if (!this.continuous) this.stop();      // 대화 모드: 한 문장 끝나면 멈춤
+        }
+      };
+      r.canceled = (s, e) => {
+        if (e.reason === sdk.CancellationReason.Error) this._err(this._map(e.errorCode, e.errorDetails, sdk));
+        this._finish();
+      };
+      r.sessionStopped = () => this._finish();
+      r.startContinuousRecognitionAsync(
+        () => {
+          this.onstart?.();
+          // 대화 모드에서 8초 동안 아무 말이 없으면 멈춤, 최대 길이 제한
+          if (!this.continuous) this._idle = setTimeout(() => this.stop(), 8000);
+          this._cap = setTimeout(() => this.stop(), this.continuous ? 10 * 60000 : 60000);
+        },
+        err => { this._err(this._map(null, err, sdk)); this._finish(); }
+      );
+    } catch {
+      this._err('azure');
+      this._finish();
+    }
+  }
+  _map(code, details = '', sdk){
+    const d = String(details);
+    if (/NotAllowed|Permission|microphone/i.test(d)) return 'not-allowed';
+    if (code === sdk.CancellationErrorCode?.AuthenticationFailure || /401|403|authenticat/i.test(d)) return 'azure-auth';
+    if (code === sdk.CancellationErrorCode?.ConnectionFailure) return 'network';
+    return 'azure';
+  }
+  _emit(text, isFinal){
+    if (isFinal){ this._finals.push(text); this._interim = ''; }
+    else this._interim = text;
+    const results = this._finals.map(t => ({ isFinal: true, 0: { transcript: t + ' ' } }));
+    if (this._interim) results.push({ isFinal: false, 0: { transcript: this._interim } });
+    this.onresult?.({ results, resultIndex: isFinal ? this._finals.length - 1 : this._finals.length });
+  }
+  _err(code){ this.onerror?.({ error: code }); }
+  stop(){
+    if (this._done || this._stopping) return;
+    this._stopping = true;
+    if (!this._r) return this._finish();
+    this._r.stopContinuousRecognitionAsync(() => this._finish(), () => this._finish());
+  }
+  abort(){ this.stop(); }
+  _finish(){
+    if (this._done) return;
+    this._done = true;
+    clearTimeout(this._idle);
+    clearTimeout(this._cap);
+    try { this._r?.close(); } catch {}
+    this.onend?.();
+  }
+}
+
+/* 설정에 따라 음성 인식 엔진 선택 (기기에 음성 인식이 없고 Azure 키가 있으면 자동으로 Azure) */
+function getEngine(){
+  const useAzure = cfg.sttProvider === 'azure' || (!DeviceSR && cfg.azureKey);
+  if (useAzure){
+    if (!cfg.azureKey){ toast('Azure 음성 인식을 쓰려면 ☰ → ⚙ 설정에 Azure 키를 넣으세요', 4200); return null; }
+    return AzureSR;
+  }
+  if (!DeviceSR){ noSR(); return null; }
+  return DeviceSR;
+}
 
 function setMicActive(lang){
   document.querySelectorAll('#viewConv .mic').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
 }
 function noSR(){
-  toast('이 브라우저는 음성 인식을 지원하지 않아요. Android Chrome을 권장해요. 화면을 눌러 글로 입력할 수 있어요.', 4200);
+  toast('이 브라우저는 음성 인식을 지원하지 않아요. ☰ → ⚙ 설정에서 음성 인식을 Azure로 바꾸거나, 화면을 눌러 글로 입력하세요.', 4500);
 }
 function srErrorText(code, lang){
   return {
@@ -687,7 +806,10 @@ function srErrorText(code, lang){
     'not-allowed': '마이크 권한을 허용해 주세요',
     'service-not-allowed': '이 기기에서 음성 인식 서비스를 쓸 수 없어요',
     'language-not-supported': `${LANGS[lang].name} 음성 인식을 이 브라우저가 지원하지 않아요`,
-    'network': '음성 인식에 인터넷 연결이 필요해요'
+    'network': '음성 인식에 인터넷 연결이 필요해요',
+    'azure-auth': 'Azure 키나 리전이 맞지 않아요. 설정을 확인하세요',
+    'azure-sdk': 'Azure 음성 인식을 불러오지 못했어요. 인터넷 연결을 확인하세요',
+    'azure': 'Azure 음성 인식 중 문제가 생겼어요'
   }[code] || '음성 인식 오류: ' + code;
 }
 
@@ -704,9 +826,10 @@ function toggleConv(lang){
 }
 
 function startConv(lang){
-  if (!SR) return noSR();
+  const Engine = getEngine();
+  if (!Engine) return;
   hideTyping();
-  const r = new SR();
+  const r = new Engine();
   r.lang = LANGS[lang].stt;
   r.interimResults = true;
   r.continuous = false;
@@ -768,12 +891,13 @@ function stopListen(){
   $('#dirBtn').disabled = false;
 }
 function startListen(){
-  if (!SR) return noSR();
+  const Engine = getEngine();
+  if (!Engine) return;
   listenOn = true;
   $('#listenMic').classList.add('active');
   $('#dirBtn').disabled = true;
   const from = ui.listenFrom;
-  const r = new SR();
+  const r = new Engine();
   r.lang = LANGS[from].stt;
   r.interimResults = true;
   r.continuous = true;
@@ -803,7 +927,7 @@ function startListen(){
   r.onerror = e => {
     if (e.error === 'aborted' || e.error === 'no-speech') return;
     toast(srErrorText(e.error, from));
-    if (['not-allowed', 'service-not-allowed', 'language-not-supported'].includes(e.error)) stopListen();
+    if (['not-allowed', 'service-not-allowed', 'language-not-supported', 'azure-auth', 'azure-sdk', 'azure'].includes(e.error)) stopListen();
   };
   r.onend = () => {
     if (live && !live.el.querySelector('.src').textContent){ live.remove(); }
@@ -1052,6 +1176,7 @@ dlg.addEventListener('close', () => {
   }
   saveJSON(CFG_KEY, cfg);
   toast('저장했어요');
+  if (cfg.sttProvider === 'azure' && cfg.azureKey) loadAzureSDK().catch(() => {});   // 미리 불러와 첫 마이크 반응을 빠르게
 });
 
 /* =========================================================
@@ -1120,6 +1245,7 @@ function boot(){
   renderListen();
   setFlip(ui.flipped);
   setView(ui.view);
+  if (cfg.sttProvider === 'azure' && cfg.azureKey) loadAzureSDK().catch(() => {});
   if (!cfg.apiKey && !cfg.proxyUrl) setTimeout(() => toast('메뉴 ☰ → 설정에서 API 키를 입력하세요', 3500), 600);
 }
 boot();
